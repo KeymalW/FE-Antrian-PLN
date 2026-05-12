@@ -1,0 +1,7 @@
+/* Monitor TV Styles */
+.monitor-container {
+  padding: 2rem;
+  background-color: #1a1a1a;
+  color: white;
+  min-height: 100vh;
+}
