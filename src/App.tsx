@@ -22,7 +22,7 @@ const cards = [
   {
     to: '/admin',
     icon: ShieldAlertIcon,
-    title: 'Dashboard Admin',
+    title: 'Dashboard',
     desc: 'Kelola antrian, panggil nomor, dan pantau statistik real-time',
     bg: 'bg-pln-cyan/10 group-hover:bg-pln-cyan/20',
     iconColor: 'text-pln-cyan',
