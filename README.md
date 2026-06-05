@@ -1,6 +1,6 @@
 ANJAYYY PLAYER TWO JOIN THE GAME
 <div>
- -ALip sang perkasa 
+ -Alip ganteng 123  
 </div>
 <p align="center">
   <img
