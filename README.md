@@ -10,3 +10,16 @@ ANJAYYY PLAYER TWO JOIN THE GAME
   />
 </p>
 
+## Mock mode
+
+Mode mock aktif secara default di lokal. Kalau mau pakai backend asli, set:
+
+```env
+VITE_USE_MOCK_DATA=false
+```
+
+Credential mock:
+
+- `admin` / `admin123`
+- `petugas1` / `petugas123`
+
