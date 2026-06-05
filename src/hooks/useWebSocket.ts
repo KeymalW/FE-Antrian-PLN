@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { USE_MOCK_DATA } from '../mocks/mockMode'
 import type { WebSocketMessage } from '../types/api'
 
 type MessageHandler = (msg: WebSocketMessage) => void
@@ -21,6 +22,10 @@ export function useWebSocket(handlers?: {
   })
 
   useEffect(() => {
+    if (USE_MOCK_DATA) {
+      return
+    }
+
     let cancelled = false
 
     function connect() {

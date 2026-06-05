@@ -11,7 +11,7 @@ const COUNTERS = [1, 2, 3]
 
 export default function MonitorTV() {
   const { setQueueList, setLastCalled } = useQueueStore()
-  const { playCallSound } = useQueueSound()
+  const { playCallSound, announceQueueCall } = useQueueSound()
   const [waitingList, setWaitingList] = useState<QueueTicket[]>([])
   const [lastCalledList, setLastCalledList] = useState<(QueueTicket | null)[]>(
     Array(COUNTERS.length).fill(null),
@@ -49,6 +49,7 @@ export default function MonitorTV() {
       }
       setLastCalled(payload)
       playCallSound()
+      announceQueueCall(payload)
       fetchAll()
     },
     onQueueUpdate: () => { fetchAll() },

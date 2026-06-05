@@ -38,7 +38,7 @@ export function QueueBoard({ waitingList, lastCalled }: QueueBoardProps) {
             {lastCalled.queueNumber}
           </div>
           <div className="mt-2 text-xl capitalize opacity-80">
-            {lastCalled.serviceType} — Counter {lastCalled.counterNumber}
+            {lastCalled.serviceType} - Counter {lastCalled.counterNumber}
           </div>
         </div>
       )}
