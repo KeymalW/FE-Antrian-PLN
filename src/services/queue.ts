@@ -80,3 +80,12 @@ export async function getLastCalled(counterNumber: number): Promise<QueueTicket 
   const res = await get<QueueTicket | null>(`/queue/last-called/${counterNumber}`)
   return res.data
 }
+
+export async function clearQueueHistory(): Promise<void> {
+  if (USE_MOCK_DATA) {
+    const { mockClearQueueHistory } = await import('../mocks/mockBackend')
+    return mockClearQueueHistory()
+  }
+
+  await post('/queue/clear-history', {})
+}

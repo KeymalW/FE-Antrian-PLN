@@ -10,6 +10,7 @@ import {
   skipQueue,
   completeQueue,
   getLastCalled,
+  clearQueueHistory,
 } from '../services/queue'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -18,7 +19,7 @@ import { Skeleton } from '../components/ui/skeleton'
 import { Spinner } from '../components/ui/spinner'
 import { ScrollArea } from '../components/ui/scroll-area'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
-import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon } from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon } from 'lucide-react'
 import {
   getServiceLabel,
   getServiceSortScore,
@@ -133,7 +134,7 @@ export default function AdminDashboard() {
         getQueueList({ status: 'waiting' }),
         getQueueStats(),
         getLastCalled(counterNumber),
-        getQueueList({ status: 'completed', perPage: 5 }),
+        getQueueList({ status: 'completed', perPage: 10 }),
         getQueueList({ perPage: 1000 }),
       ])
       setQueueList(sortWaitingTickets(list))
@@ -227,6 +228,18 @@ export default function AdminDashboard() {
     if (!lastCalled) return
     playCallSound()
     announceQueueCall(lastCalled)
+  }
+
+  const handleClearHistory = async () => {
+    setActionLoading('clear-history')
+    try {
+      await clearQueueHistory()
+      await fetchData()
+    } catch {
+      // silent
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   return (
@@ -421,8 +434,24 @@ export default function AdminDashboard() {
           </Card>
 
           <Card className="mt-4">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Antrian Terakhir Dilayani</CardTitle>
+              {recentCompleted.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleClearHistory}
+                  disabled={actionLoading === 'clear-history'}
+                >
+                  {actionLoading === 'clear-history' ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <Trash2Icon className="size-4" />
+                  )}
+                  <span className="ml-2 text-xs">Clear</span>
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {recentCompleted.length === 0 ? (
@@ -430,24 +459,26 @@ export default function AdminDashboard() {
                   <p>Belum ada riwayat selesai</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentCompleted.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      className="flex items-center justify-between rounded-lg border px-4 py-3"
-                    >
-                      <div>
-                        <div className="font-semibold text-foreground">
-                          {ticket.queueNumber}
+                <ScrollArea className="h-[4.5rem] pr-3">
+                  <div className="space-y-3">
+                    {recentCompleted.map((ticket) => (
+                      <div
+                        key={ticket.id}
+                        className="flex items-center justify-between rounded-lg border px-4 py-3"
+                      >
+                        <div>
+                          <div className="font-semibold text-foreground">
+                            {ticket.queueNumber}
+                          </div>
+                          <div className="text-xs capitalize text-muted-foreground">
+                            {getServiceLabel(ticket.serviceType)} • Selesai {formatClock(ticket.completedAt)}
+                          </div>
                         </div>
-                        <div className="text-xs capitalize text-muted-foreground">
-                          {getServiceLabel(ticket.serviceType)} • Selesai {formatClock(ticket.completedAt)}
-                        </div>
+                        <Badge className="bg-green-100 text-green-800">Selesai</Badge>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">Selesai</Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
