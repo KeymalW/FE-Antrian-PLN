@@ -4,7 +4,6 @@ import { CreditCard, AlertTriangle, ClipboardList, Info, CheckCircle2, ArrowLeft
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
-import { PLNLogo } from '../components/layout/PLNLogo'
 import type { ServiceType, QueueTicket } from '../types/queue'
 
 const services: { type: ServiceType; label: string; icon: React.ElementType }[] = [
