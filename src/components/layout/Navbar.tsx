@@ -37,7 +37,7 @@ export function Navbar() {
           </Link>
           {isAuthenticated && (
             <Link to="/admin" className={`no-underline ${isActive('/admin') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
-              Admin
+              Dashboard
             </Link>
           )}
           <Link to="/monitor" className={`no-underline ${isActive('/monitor') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
