@@ -90,9 +90,6 @@ export default function Kiosk() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4">
-          <PLNLogo className="size-16" />
-        </div>
         <h1 className="mb-1 text-3xl font-bold">Selamat Datang</h1>
         <p className="text-muted-foreground">
           Pilih jenis layanan untuk mengambil nomor antrian
