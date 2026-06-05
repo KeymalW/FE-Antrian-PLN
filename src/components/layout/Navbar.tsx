@@ -25,9 +25,11 @@ export function Navbar() {
   return (
     <nav className="flex h-14 items-center justify-between bg-pln-teal px-6">
       <div className="flex items-center gap-6">
-        <Link to="/" className="flex items-center gap-2 no-underline">
+        <Link to="/" className="flex items-center gap-1.5 no-underline">
           <PLNLogo className="size-8" />
-          <span className="text-lg font-bold text-white">Antrian</span>
+          <span className="text-lg font-bold leading-none tracking-tight text-white">
+            PLN
+          </span>
         </Link>
         <div className="flex items-center gap-4 text-sm">
           <Link to="/kiosk" className={`no-underline ${isActive('/kiosk') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>

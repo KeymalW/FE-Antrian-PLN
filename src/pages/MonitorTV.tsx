@@ -7,7 +7,7 @@ import { QueueBoard } from '../components/monitor/QueueBoard'
 import { PLNLogo } from '../components/layout/PLNLogo'
 import type { QueueTicket } from '../types/queue'
 
-const COUNTERS = [1, 2, 3, 4, 5]
+const COUNTERS = [1, 2, 3]
 
 export default function MonitorTV() {
   const { setQueueList, setLastCalled } = useQueueStore()
@@ -74,14 +74,14 @@ export default function MonitorTV() {
 
   return (
     <div className="flex h-screen flex-col bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-white">
-      <div className="flex items-center justify-between bg-pln-teal px-10 py-5 shadow-lg">
+      <div className="flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-10 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <PLNLogo className="size-14" />
           <div>
             <h1 className="text-2xl font-bold tracking-wide">
               Sistem Antrian
             </h1>
-            <p className="text-sm text-pln-cyan/70">PT Perusahaan Listrik Negara</p>
+            <p className="text-sm text-white/60">PT Perusahaan Listrik Negara</p>
           </div>
         </div>
         <div className="text-right">
@@ -92,7 +92,7 @@ export default function MonitorTV() {
               second: '2-digit',
             })}
           </div>
-          <div className="text-sm text-pln-cyan/70">
+          <div className="text-sm text-white/60">
             {time.toLocaleDateString('id-ID', {
               weekday: 'long',
               year: 'numeric',
@@ -103,7 +103,7 @@ export default function MonitorTV() {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-5 gap-4 overflow-hidden p-6">
+      <div className="grid flex-1 grid-cols-3 gap-4 overflow-hidden p-6">
         {COUNTERS.map((counter, idx) => (
           <div
             key={counter}
