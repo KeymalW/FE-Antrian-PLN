@@ -542,3 +542,9 @@ export function mockGetQueueStats(): QueueStats {
 export function mockGetLastCalled(counterNumber: number): QueueTicket | null {
   return getActiveTicket(counterNumber)
 }
+
+export function mockClearQueueHistory(): void {
+  mockState.tickets = mockState.tickets.filter(
+    (t) => t.status !== 'completed' && t.status !== 'skipped',
+  )
+}
