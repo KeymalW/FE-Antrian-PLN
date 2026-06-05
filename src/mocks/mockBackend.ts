@@ -1,5 +1,5 @@
 import type { LoginResponse, User } from '../types/auth'
-import type { CallRequest, QueueStats, QueueTicket, ServiceType } from '../types/queue'
+import type { CallRequest, QueueStats, QueueStatus, QueueTicket, ServiceType } from '../types/queue'
 
 type TicketSeed = Omit<QueueTicket, 'createdAt' | 'calledAt' | 'completedAt'> & {
   createdMinutesAgo: number
@@ -43,6 +43,22 @@ function minutesAgo(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString()
 }
 
+function startOfCurrentWeekMonday() {
+  const result = new Date()
+  result.setHours(0, 0, 0, 0)
+  const day = result.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  result.setDate(result.getDate() + diff)
+  return result
+}
+
+function weekTimestamp(dayOffset: number, hour: number, minute: number) {
+  const date = startOfCurrentWeekMonday()
+  date.setDate(date.getDate() + dayOffset)
+  date.setHours(hour, minute, 0, 0)
+  return date.toISOString()
+}
+
 function createTicket(seed: TicketSeed): QueueTicket {
   return {
     id: seed.id,
@@ -53,6 +69,38 @@ function createTicket(seed: TicketSeed): QueueTicket {
     createdAt: minutesAgo(seed.createdMinutesAgo),
     calledAt: seed.calledMinutesAgo == null ? null : minutesAgo(seed.calledMinutesAgo),
     completedAt: seed.completedMinutesAgo == null ? null : minutesAgo(seed.completedMinutesAgo),
+  }
+}
+
+function createWeeklyTicket(seed: {
+  id: string
+  queueNumber: string
+  serviceType: ServiceType
+  status: QueueStatus
+  counterNumber: 1 | 2 | 3
+  dayOffset: number
+  createdHour: number
+  createdMinute: number
+  calledHour?: number
+  calledMinute?: number
+  completedHour?: number
+  completedMinute?: number
+}): QueueTicket {
+  return {
+    id: seed.id,
+    queueNumber: seed.queueNumber,
+    serviceType: seed.serviceType,
+    status: seed.status,
+    counterNumber: seed.counterNumber,
+    createdAt: weekTimestamp(seed.dayOffset, seed.createdHour, seed.createdMinute),
+    calledAt:
+      seed.calledHour == null || seed.calledMinute == null
+        ? null
+        : weekTimestamp(seed.dayOffset, seed.calledHour, seed.calledMinute),
+    completedAt:
+      seed.completedHour == null || seed.completedMinute == null
+        ? null
+        : weekTimestamp(seed.dayOffset, seed.completedHour, seed.completedMinute),
   }
 }
 
@@ -125,6 +173,206 @@ const mockTickets: QueueTicket[] = [
     counterNumber: null,
     createdMinutesAgo: 52,
     calledMinutesAgo: 47,
+  }),
+  createWeeklyTicket({
+    id: 'week-1',
+    queueNumber: 'P-101',
+    serviceType: 'pembayaran',
+    status: 'completed',
+    counterNumber: 1,
+    dayOffset: 0,
+    createdHour: 8,
+    createdMinute: 10,
+    calledHour: 8,
+    calledMinute: 18,
+    completedHour: 8,
+    completedMinute: 40,
+  }),
+  createWeeklyTicket({
+    id: 'week-2',
+    queueNumber: 'G-101',
+    serviceType: 'pengaduan',
+    status: 'completed',
+    counterNumber: 2,
+    dayOffset: 0,
+    createdHour: 9,
+    createdMinute: 15,
+    calledHour: 9,
+    calledMinute: 25,
+    completedHour: 9,
+    completedMinute: 52,
+  }),
+  createWeeklyTicket({
+    id: 'week-3',
+    queueNumber: 'D-101',
+    serviceType: 'pendaftaran',
+    status: 'serving',
+    counterNumber: 3,
+    dayOffset: 0,
+    createdHour: 10,
+    createdMinute: 5,
+    calledHour: 10,
+    calledMinute: 20,
+  }),
+  createWeeklyTicket({
+    id: 'week-4',
+    queueNumber: 'P-102',
+    serviceType: 'pembayaran',
+    status: 'completed',
+    counterNumber: 1,
+    dayOffset: 1,
+    createdHour: 8,
+    createdMinute: 10,
+    calledHour: 8,
+    calledMinute: 22,
+    completedHour: 8,
+    completedMinute: 48,
+  }),
+  createWeeklyTicket({
+    id: 'week-5',
+    queueNumber: 'G-102',
+    serviceType: 'pengaduan',
+    status: 'called',
+    counterNumber: 2,
+    dayOffset: 1,
+    createdHour: 9,
+    createdMinute: 12,
+    calledHour: 9,
+    calledMinute: 31,
+  }),
+  createWeeklyTicket({
+    id: 'week-6',
+    queueNumber: 'I-101',
+    serviceType: 'informasi',
+    status: 'completed',
+    counterNumber: 3,
+    dayOffset: 1,
+    createdHour: 10,
+    createdMinute: 8,
+    calledHour: 10,
+    calledMinute: 16,
+    completedHour: 10,
+    completedMinute: 44,
+  }),
+  createWeeklyTicket({
+    id: 'week-7',
+    queueNumber: 'D-102',
+    serviceType: 'pendaftaran',
+    status: 'completed',
+    counterNumber: 1,
+    dayOffset: 2,
+    createdHour: 8,
+    createdMinute: 5,
+    calledHour: 8,
+    calledMinute: 12,
+    completedHour: 8,
+    completedMinute: 33,
+  }),
+  createWeeklyTicket({
+    id: 'week-8',
+    queueNumber: 'P-103',
+    serviceType: 'pembayaran',
+    status: 'serving',
+    counterNumber: 2,
+    dayOffset: 2,
+    createdHour: 9,
+    createdMinute: 18,
+    calledHour: 9,
+    calledMinute: 40,
+  }),
+  createWeeklyTicket({
+    id: 'week-9',
+    queueNumber: 'G-103',
+    serviceType: 'pengaduan',
+    status: 'completed',
+    counterNumber: 3,
+    dayOffset: 2,
+    createdHour: 10,
+    createdMinute: 22,
+    calledHour: 10,
+    calledMinute: 33,
+    completedHour: 11,
+    completedMinute: 2,
+  }),
+  createWeeklyTicket({
+    id: 'week-10',
+    queueNumber: 'P-104',
+    serviceType: 'pembayaran',
+    status: 'completed',
+    counterNumber: 1,
+    dayOffset: 3,
+    createdHour: 8,
+    createdMinute: 6,
+    calledHour: 8,
+    calledMinute: 19,
+    completedHour: 8,
+    completedMinute: 46,
+  }),
+  createWeeklyTicket({
+    id: 'week-11',
+    queueNumber: 'D-103',
+    serviceType: 'pendaftaran',
+    status: 'called',
+    counterNumber: 2,
+    dayOffset: 3,
+    createdHour: 9,
+    createdMinute: 14,
+    calledHour: 9,
+    calledMinute: 35,
+  }),
+  createWeeklyTicket({
+    id: 'week-12',
+    queueNumber: 'I-102',
+    serviceType: 'informasi',
+    status: 'completed',
+    counterNumber: 3,
+    dayOffset: 3,
+    createdHour: 10,
+    createdMinute: 4,
+    calledHour: 10,
+    calledMinute: 17,
+    completedHour: 10,
+    completedMinute: 55,
+  }),
+  createWeeklyTicket({
+    id: 'week-13',
+    queueNumber: 'G-104',
+    serviceType: 'pengaduan',
+    status: 'completed',
+    counterNumber: 1,
+    dayOffset: 4,
+    createdHour: 8,
+    createdMinute: 3,
+    calledHour: 8,
+    calledMinute: 25,
+    completedHour: 8,
+    completedMinute: 51,
+  }),
+  createWeeklyTicket({
+    id: 'week-14',
+    queueNumber: 'P-105',
+    serviceType: 'pembayaran',
+    status: 'serving',
+    counterNumber: 2,
+    dayOffset: 4,
+    createdHour: 9,
+    createdMinute: 11,
+    calledHour: 9,
+    calledMinute: 29,
+  }),
+  createWeeklyTicket({
+    id: 'week-15',
+    queueNumber: 'D-104',
+    serviceType: 'pendaftaran',
+    status: 'completed',
+    counterNumber: 3,
+    dayOffset: 4,
+    createdHour: 10,
+    createdMinute: 7,
+    calledHour: 10,
+    calledMinute: 21,
+    completedHour: 10,
+    completedMinute: 49,
   }),
 ]
 

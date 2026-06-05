@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -16,7 +16,20 @@ import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Spinner } from '../components/ui/spinner'
+import { ScrollArea } from '../components/ui/scroll-area'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
+import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon } from 'lucide-react'
+import {
+  getServiceLabel,
+  getServiceSortScore,
+} from '../lib/serviceTypes'
+import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
+
+const ServiceSummaryChart = lazy(() =>
+  import('../components/dashboard/ServiceSummaryChart').then((module) => ({
+    default: module.ServiceSummaryChart,
+  })),
+)
 
 const statusLabel: Record<QueueStatus, string> = {
   waiting: 'Menunggu',
@@ -76,6 +89,25 @@ function sortRecentCompleted(tickets: QueueTicket[]) {
   })
 }
 
+function sortWaitingTickets(tickets: QueueTicket[]) {
+  return [...tickets].sort((a, b) => {
+    const aScore = getServiceSortScore(a.serviceType)
+    const bScore = getServiceSortScore(b.serviceType)
+
+    if (aScore.group !== bScore.group) return aScore.group - bScore.group
+    if (aScore.order !== bScore.order) return aScore.order - bScore.order
+
+    const queueCompare = a.queueNumber.localeCompare(b.queueNumber, 'id', {
+      numeric: true,
+      sensitivity: 'base',
+    })
+
+    if (queueCompare !== 0) return queueCompare
+
+    return a.createdAt.localeCompare(b.createdAt)
+  })
+}
+
 export default function AdminDashboard() {
   const { user } = useAuthStore()
   const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled } = useQueueStore()
@@ -83,7 +115,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
+  const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
   const [isCounterPaused, setIsCounterPaused] = useState(false)
+  const [showServiceSummary, setShowServiceSummary] = useState(false)
   const [now, setNow] = useState(new Date())
 
   const counterNumber = user?.counterNumber ?? 1
@@ -95,16 +129,18 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [list, statsData, last, completed] = await Promise.all([
+      const [list, statsData, last, completed, allTickets] = await Promise.all([
         getQueueList({ status: 'waiting' }),
         getQueueStats(),
         getLastCalled(counterNumber),
         getQueueList({ status: 'completed', perPage: 5 }),
+        getQueueList({ perPage: 1000 }),
       ])
-      setQueueList(list)
+      setQueueList(sortWaitingTickets(list))
       setStats(statsData)
       setLastCalled(last)
       setRecentCompleted(sortRecentCompleted(completed))
+      setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
       console.error('Failed to fetch queue data')
     } finally {
@@ -135,7 +171,11 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    fetchData()
+    const timer = window.setTimeout(() => {
+      void fetchData()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [fetchData])
 
   const handleCall = async (queueId: string) => {
@@ -247,19 +287,19 @@ export default function AdminDashboard() {
                   <p className="text-sm">Semua antrian sudah selesai</p>
                 </div>
               ) : (
-                <div>
+                <ScrollArea className="h-[16rem] pr-3">
                   {queueList.map((q) => (
                     <div
                       key={q.id}
-                      className="flex items-center justify-between border-b py-3 last:border-b-0"
+                      className="grid gap-3 border-b py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-primary">
+                      <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
+                        <span className="text-lg font-bold tabular-nums text-primary">
                           {q.queueNumber}
                         </span>
-                        <div className="flex flex-col">
-                          <span className="text-sm capitalize text-muted-foreground">
-                            {q.serviceType}
+                        <div className="min-w-0 flex flex-col">
+                          <span className="truncate text-sm capitalize text-muted-foreground">
+                            {getServiceLabel(q.serviceType)}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             Dicetak {formatClock(q.createdAt)}
@@ -267,7 +307,7 @@ export default function AdminDashboard() {
                         </div>
                         <QueueStatusBadge status={q.status} />
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 md:justify-end">
                         <Button
                           size="sm"
                           onClick={() => handleCall(q.id)}
@@ -287,9 +327,42 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </ScrollArea>
               )}
             </CardContent>
+          </Card>
+
+          <Card className="mt-6 rounded-2xl shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3Icon className="size-5 text-pln-cyan" />
+                  Perbandingan Loket Mingguan
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Distribusi tiket per loket untuk hari kerja Senin sampai Jumat.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowServiceSummary((prev) => !prev)}
+              >
+                {showServiceSummary ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                {showServiceSummary ? 'Minimize' : 'Buka Diagram'}
+              </Button>
+            </CardHeader>
+            {showServiceSummary && (
+              <CardContent className="pt-0">
+                {loading ? (
+                  <CardSkeleton />
+                ) : (
+                  <Suspense fallback={<CardSkeleton />}>
+                    <ServiceSummaryChart rows={serviceSummary} embedded />
+                  </Suspense>
+                )}
+              </CardContent>
+            )}
           </Card>
         </div>
 
@@ -305,7 +378,7 @@ export default function AdminDashboard() {
                     {lastCalled.queueNumber}
                   </div>
                   <div className="mt-1 text-sm capitalize text-muted-foreground">
-                    {lastCalled.serviceType}
+                    {getServiceLabel(lastCalled.serviceType)}
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     Dipanggil di Counter #{lastCalled.counterNumber ?? counterNumber}
@@ -368,7 +441,7 @@ export default function AdminDashboard() {
                           {ticket.queueNumber}
                         </div>
                         <div className="text-xs capitalize text-muted-foreground">
-                          {ticket.serviceType} • Selesai {formatClock(ticket.completedAt)}
+                          {getServiceLabel(ticket.serviceType)} • Selesai {formatClock(ticket.completedAt)}
                         </div>
                       </div>
                       <Badge className="bg-green-100 text-green-800">Selesai</Badge>
