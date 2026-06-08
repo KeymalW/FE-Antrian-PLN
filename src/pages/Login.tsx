@@ -24,7 +24,7 @@ export default function Login() {
     try {
       const res = await loginApi({ username, password })
       login(res.user, res.token)
-      navigate('/admin')
+      navigate(res.user.role === 'admin' ? '/admin' : '/petugas')
     } catch {
       setError('Username atau password salah')
     } finally {

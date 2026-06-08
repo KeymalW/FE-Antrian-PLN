@@ -37,6 +37,28 @@ const mockUsers: Record<string, { user: User; password: string; token: string }>
       counterNumber: 1,
     },
   },
+  petugas2: {
+    password: 'petugas123',
+    token: 'mock-petugas-token',
+    user: {
+      id: 'user-petugas-2',
+      username: 'petugas2',
+      name: 'Petugas Loket 2',
+      role: 'petugas',
+      counterNumber: 2,
+    },
+  },
+  petugas3: {
+    password: 'petugas123',
+    token: 'mock-petugas-token',
+    user: {
+      id: 'user-petugas-3',
+      username: 'petugas3',
+      name: 'Petugas Loket 3',
+      role: 'petugas',
+      counterNumber: 3,
+    },
+  },
 }
 
 function minutesAgo(minutes: number): string {
