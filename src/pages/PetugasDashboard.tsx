@@ -111,17 +111,17 @@ function sortWaitingTickets(tickets: QueueTicket[]) {
 
 export default function PetugasDashboard() {
   const { user } = useAuthStore()
-  const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled } = useQueueStore()
+  const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled, counterStatus, setCounterStatus } = useQueueStore()
   const { playCallSound, playBeep, announceQueueCall } = useQueueSound()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
   const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
-  const [isCounterPaused, setIsCounterPaused] = useState(false)
   const [showServiceSummary, setShowServiceSummary] = useState(false)
   const [now, setNow] = useState(new Date())
 
   const counterNumber = user?.counterNumber ?? 1
+  const isCounterPaused = counterStatus[counterNumber] ?? false
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -260,7 +260,7 @@ export default function PetugasDashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsCounterPaused((prev) => !prev)}
+            onClick={() => setCounterStatus(counterNumber, !isCounterPaused)}
           >
             {isCounterPaused ? 'Aktifkan Loket' : 'Istirahat Loket'}
           </Button>

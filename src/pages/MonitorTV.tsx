@@ -10,7 +10,7 @@ import type { QueueTicket } from '../types/queue'
 const COUNTERS = [1, 2, 3]
 
 export default function MonitorTV() {
-  const { setQueueList, setLastCalled } = useQueueStore()
+  const { setQueueList, setLastCalled, counterStatus } = useQueueStore()
   const { playCallSound, announceQueueCall } = useQueueSound()
   const [waitingList, setWaitingList] = useState<QueueTicket[]>([])
   const [lastCalledList, setLastCalledList] = useState<(QueueTicket | null)[]>(
@@ -105,29 +105,44 @@ export default function MonitorTV() {
       </div>
 
       <div className="grid flex-1 grid-cols-3 gap-4 overflow-hidden p-6">
-        {COUNTERS.map((counter, idx) => (
-          <div
-            key={counter}
-            className="flex flex-col items-center justify-center rounded-2xl bg-gray-800/60 p-4 ring-1 ring-pln-cyan/10 backdrop-blur"
-          >
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-pln-cyan/70">
-              <div className="size-2 rounded-full bg-pln-cyan" />
-              Counter {counter}
+        {COUNTERS.map((counter, idx) => {
+          const isPaused = counterStatus[counter] ?? false
+          return (
+            <div
+              key={counter}
+              className={`flex flex-col items-center justify-center rounded-2xl p-4 ring-1 backdrop-blur ${
+                isPaused
+                  ? 'bg-red-950/40 ring-red-500/30'
+                  : 'bg-gray-800/60 ring-pln-cyan/10'
+              }`}
+            >
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-pln-cyan/70">
+                <div className={`size-2 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`} />
+                Counter {counter}
+              </div>
+
+              {isPaused ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="rounded-full border-2 border-red-500/50 px-6 py-2 text-lg font-bold tracking-wider text-red-400">
+                    ISTIRAHAT
+                  </div>
+                  <div className="text-4xl font-bold tracking-tight text-gray-600">---</div>
+                </div>
+              ) : lastCalledList[idx] ? (
+                <>
+                  <div className="text-6xl font-bold tracking-tight text-pln-cyan">
+                    {lastCalledList[idx]!.queueNumber}
+                  </div>
+                  <div className="mt-2 text-sm capitalize text-gray-400">
+                    {lastCalledList[idx]!.serviceType}
+                  </div>
+                </>
+              ) : (
+                <div className="text-4xl font-bold tracking-tight text-gray-600">---</div>
+              )}
             </div>
-            {lastCalledList[idx] ? (
-              <>
-                <div className="text-6xl font-bold tracking-tight text-pln-cyan">
-                  {lastCalledList[idx]!.queueNumber}
-                </div>
-                <div className="mt-2 text-sm capitalize text-gray-400">
-                  {lastCalledList[idx]!.serviceType}
-                </div>
-              </>
-            ) : (
-              <div className="text-4xl font-bold tracking-tight text-gray-600">---</div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="h-[30vh] border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-4">

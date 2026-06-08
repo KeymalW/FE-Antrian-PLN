@@ -89,7 +89,7 @@ function sortRecentCompleted(tickets: QueueTicket[]) {
 }
 
 export default function AdminDashboard() {
-  const { stats, setStats } = useQueueStore()
+  const { stats, setStats, counterStatus } = useQueueStore()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [waitingQueue, setWaitingQueue] = useState<QueueTicket[]>([])
@@ -188,13 +188,23 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {COUNTERS.map((num) => {
               const active = counters[num - 1]
+              const isPaused = counterStatus[num] ?? false
               return (
                 <Card key={num}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Loket #{num}</CardTitle>
+                    <CardTitle className="flex items-center justify-between text-sm">
+                      Loket #{num}
+                      {isPaused && (
+                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/50 dark:text-red-400">
+                          Istirahat
+                        </span>
+                      )}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="text-center">
-                    {loading ? (
+                    {isPaused ? (
+                      <div className="py-4 text-sm text-muted-foreground">Istirahat</div>
+                    ) : loading ? (
                       <Skeleton className="mx-auto h-8 w-20" />
                     ) : active ? (
                       <>
