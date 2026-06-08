@@ -6,12 +6,14 @@ interface QueueState {
   lastCalled: QueueTicket | null
   stats: QueueStats | null
   isLoading: boolean
+  counterStatus: Record<number, boolean>
   setQueueList: (list: QueueTicket[]) => void
   setLastCalled: (ticket: QueueTicket | null) => void
   setStats: (stats: QueueStats | null) => void
   setLoading: (loading: boolean) => void
   addTicket: (ticket: QueueTicket) => void
   updateTicket: (id: string, updates: Partial<QueueTicket>) => void
+  setCounterStatus: (counter: number, paused: boolean) => void
 }
 
 export const useQueueStore = create<QueueState>((set) => ({
@@ -19,6 +21,7 @@ export const useQueueStore = create<QueueState>((set) => ({
   lastCalled: null,
   stats: null,
   isLoading: false,
+  counterStatus: {},
 
   setQueueList: (list) => set({ queueList: list }),
   setLastCalled: (ticket) => set({ lastCalled: ticket }),
@@ -33,5 +36,10 @@ export const useQueueStore = create<QueueState>((set) => ({
       queueList: state.queueList.map((t) =>
         t.id === id ? { ...t, ...updates } : t,
       ),
+    })),
+
+  setCounterStatus: (counter, paused) =>
+    set((state) => ({
+      counterStatus: { ...state.counterStatus, [counter]: paused },
     })),
 }))
