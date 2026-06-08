@@ -376,14 +376,40 @@ const mockTickets: QueueTicket[] = [
   }),
 ]
 
-const mockState = {
-  tickets: [...mockTickets],
-  nextSequence: {
-    pembayaran: 3,
-    pengaduan: 3,
-    pendaftaran: 3,
-    informasi: 3,
-  } satisfies Record<ServiceType, number>,
+function getInitialState() {
+  return {
+    tickets: [...mockTickets],
+    nextSequence: {
+      pembayaran: 3,
+      pengaduan: 3,
+      pendaftaran: 3,
+      informasi: 3,
+    } satisfies Record<ServiceType, number>,
+  }
+}
+
+function persistState(state: typeof mockState) {
+  try {
+    sessionStorage.setItem('mockQueueState', JSON.stringify(state))
+  } catch {
+    /* noop */
+  }
+}
+
+function loadState() {
+  try {
+    const saved = sessionStorage.getItem('mockQueueState')
+    if (saved) return JSON.parse(saved) as ReturnType<typeof getInitialState>
+  } catch {
+    /* noop */
+  }
+  return getInitialState()
+}
+
+const mockState = loadState()
+
+function saveState() {
+  persistState(mockState)
 }
 
 function clone(ticket: QueueTicket): QueueTicket {
@@ -397,6 +423,7 @@ function getSortedTickets(tickets: QueueTicket[]): QueueTicket[] {
 function getNextQueueNumber(serviceType: ServiceType): string {
   const next = mockState.nextSequence[serviceType]
   mockState.nextSequence[serviceType] += 1
+  saveState()
   return `${servicePrefix[serviceType]}-${String(next).padStart(3, '0')}`
 }
 
@@ -408,6 +435,7 @@ function updateTicket(id: string, updater: (ticket: QueueTicket) => QueueTicket)
 
   const next = updater(mockState.tickets[index])
   mockState.tickets[index] = next
+  saveState()
   return clone(next)
 }
 
@@ -489,6 +517,7 @@ export function mockTakeTicket(serviceType: ServiceType): QueueTicket {
   }
 
   mockState.tickets.push(ticket)
+  saveState()
   return clone(ticket)
 }
 
@@ -552,4 +581,5 @@ export function mockClearQueueHistory(): void {
   mockState.tickets = mockState.tickets.filter(
     (t) => t.status !== 'completed' && t.status !== 'skipped',
   )
+  saveState()
 }
