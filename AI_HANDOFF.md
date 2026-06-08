@@ -1,0 +1,119 @@
+# AI Handoff — FE Antrian PLN
+
+## Ringkasan
+
+Sistem antrian digital PLN. 6 halaman, dual-mode (mock/real API), WebSocket real-time, sound notification (TTS + bell), grafik mingguan, QR code tracking, role-based access (admin/petugas).
+
+## Mode Mock
+
+Mock aktif secara default (`VITE_USE_MOCK_DATA !== 'false'` di `src/mocks/mockMode.ts`).
+State mock di-persist ke `sessionStorage` dengan key `mockQueueState` biar gak ilang pas navigasi.
+
+### Mock Credentials
+
+| Username | Password | Role | Counter |
+|---|---|---|---|
+| `admin` | `admin123` | admin | - |
+| `petugas1` | `petugas123` | petugas | 1 |
+| `petugas2` | `petugas123` | petugas | 2 |
+| `petugas3` | `petugas123` | petugas | 3 |
+
+### Mock Data
+
+- 8 tiket real-time (ticket-1 sampai ticket-8) dengan berbagai status
+- 15 tiket weekly (week-1 sampai week-15) untuk data grafik mingguan
+- `mockGetLastCalled(counterNumber)` ambil tiket `called`/`serving` terakhir per counter
+
+## Routing (`src/App.tsx`)
+
+```
+<AppLayout>               ← punya Navbar
+  /                       → Landing (3 card navigasi)
+  /kiosk                  → Ambil tiket
+  /login                  → Login form
+  /admin                  → AdminDashboard (ProtectedRoute role=admin)
+  /petugas                → PetugasDashboard (ProtectedRoute role=petugas)
+</AppLayout>
+/monitor                  → MonitorTV (fullscreen, tanpa navbar)
+/track/:id                → TrackTicket (standalone, tanpa navbar)
+```
+
+## Pages
+
+| File | Component | Fungsi |
+|---|---|---|
+| `Kiosk.tsx` | Kiosk | Ambil tiket (4 layanan), estimasi waktu tunggu, redirect ke `/track/:id` setelah sukses |
+| `TrackTicket.tsx` | TrackTicket | Tracking via URL param, QR code, tombol cetak (hidden print template), polling tiap 5 detik, link demo kalo tiket gak ditemukan |
+| `MonitorTV.tsx` | MonitorTV | 3 counter card + waiting list auto-scroll, jam real-time, badge ISTIRAHAT kalo counter status paused |
+| `PetugasDashboard.tsx` | PetugasDashboard | Panggil/skip/complete tiket, auto-call next setelah selesai, toggle istirahat, grafik mingguan, polling durasi per detik. WS `onQueueCall` filter by `counterNumber` biar gak desync. `fetchData` pake abort-on-stale (fetchIdRef) biar gak race condition. `handleComplete` single fetch aja. |
+| `AdminDashboard.tsx` | AdminDashboard | Multi-counter status, statistik real-time, waiting list, riwayat selesai, grafik mingguan bar chart, export Excel, clear history |
+| `Login.tsx` | Login | Login form, redirect based on role |
+
+## Stores (Zustand)
+
+### `authStore.ts`
+- `user: User | null`, `token: string | null`, `isAuthenticated: boolean`
+- `login(user, token)`, `logout()` — persist ke localStorage
+
+### `queueStore.ts`
+- `queueList: QueueTicket[]`, `lastCalled: QueueTicket | null`, `stats: QueueStats | null`, `isLoading: boolean`
+- `counterStatus: Record<number, boolean>` — key = nomor counter, value = `true` kalo istirahat
+- Actions: `setQueueList`, `setLastCalled`, `setStats`, `setLoading`, `addTicket`, `updateTicket` (juga update `lastCalled` kalo ID cocok), `setCounterStatus`
+
+## Services (`src/services/`)
+
+Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
+
+- `api.ts` — Axios instance, baseURL dari `VITE_API_URL`, interceptor token + auto-redirect 401 (pake `useAuthStore.getState().logout()` biar cleanup state)
+- `auth.ts` — login/logout/getProfile
+- `queue.ts` — getQueueList, takeTicket, callQueue, skipQueue, completeQueue, getQueueStats, getTicketById, getLastCalled, clearQueueHistory
+
+## Key Behaviors & Edge Cases
+
+1. **WebSocket fake di mock mode** — `useWebSocket` hook skip koneksi kalo `USE_MOCK_DATA = true`. Data cuma di-fetch via polling (interval + event-based dari petugas action). Di mode real, heartbeat `{ type: 'ping' }` tiap 30 detik jaga koneksi tetep hidup.
+2. **Auto-call** — `handleComplete` di PetugasDashboard otomatis panggil tiket berikutnya dari antrian (`useQueueStore.getState().queueList[0]`) setelah selesai. Skip tetep manual. Cuma 1x fetchData di akhir (gak dobel).
+3. **Counter pause blocks call** — Tombol Panggil di-disable kalo `isCounterPaused`, dengan notice kuning. Juga di-disable kalo `hasActiveTicket`.
+4. **Print layout** — Hidden div di TrackTicket dengan class `hidden print:block`. QR code + info tiket cuma muncul pas `window.print()`.
+5. **QR code** — Encode full URL ke `/track/:id`, bukan JSON. URL dari `VITE_PUBLIC_URL` env.
+6. **Auto-redirect kiosk** — Setelah ambil tiket, redirect ke `/track/:id` (bukan inline success view).
+7. **Monitor TV** — Background dark, grid 3 kolom counter (atau 1 kolom di mobile). Counter card jadi merah saat ISTIRAHAT.
+8. **Demo ticket links** — Di TrackTicket, kalo tiket gak ditemukan, tampilin link demo untuk tiket sample (ticket-1 sampai ticket-8).
+
+## Hooks
+
+| File | Fungsi |
+|---|---|
+| `useWebSocket.ts` | Koneksi WebSocket ke `VITE_WS_URL`, auto-reconnect 3 detik, dispatch by message type, heartbeat `{ type: 'ping' }` tiap 30 detik. Skip kalo mock mode. |
+| `useQueueSound.ts` | `playCallSound()` (audio file), `playBeep()` (800Hz oscillator), `announceQueueCall()` (bell + TTS Indonesia), `clearAnnouncementQueue()`, `playBellChime()` (3 partial frequencies) |
+
+## Env Variables
+
+| Variable | Default | Dipakai di |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:3001/api` | services/api.ts |
+| `VITE_WS_URL` | `ws://localhost:3001/ws` | hooks/useWebSocket.ts |
+| `VITE_USE_MOCK_DATA` | `'true'` (kalo bukan `'false'`) | mocks/mockMode.ts |
+| `VITE_SOUND_URL` | `/sounds/call.mp3` | hooks/useQueueSound.ts |
+| `VITE_PUBLIC_URL` | `window.location.origin` | pages/TrackTicket.tsx |
+
+## Recent Bug Fixes (Session 2026-06-08)
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | **Desync**: WS `onQueueCall` set `lastCalled` tanpa filter counter | Nambah `if (payload.counterNumber === counterNumber)` di `PetugasDashboard.tsx:162` |
+| 2 | **WebSocket gak ada heartbeat** | Nambah `startHeartbeat` kirim `{ type: 'ping' }` tiap 30 detik di `useWebSocket.ts:34-48` |
+| 3 | **`updateTicket` gak update `lastCalled`** | `updateTicket` di `queueStore.ts:39-42` sekarang update `lastCalled` kalo ID cocok |
+| 4 | **401 redirect pake hardcode localStorage** | Pake `useAuthStore.getState().logout()` di `api.ts:23` |
+| 5 | **Double fetch di `handleComplete`** | Hapus fetch pertama, cukup 1 fetch di akhir (`PetugasDashboard.tsx:220-241`) |
+| 6 | **Race condition fetchData** | Pake `fetchIdRef` counter + stale check (`PetugasDashboard.tsx:126,134,143`) |
+
+## Known Issues / Next Steps
+
+- **next-themes** terinstall tapi **gak dipake** — gak ada ThemeProvider, gak ada dark mode toggle. Semua `.dark:` selector di shadcn components gak aktif.
+- **Banyak UI components gak kepake** — Dialog, Select, Input, Label, Table, Sonner ada di `components/ui/` tapi mostly unused.
+- **Sound file mungkin ilang** — `/sounds/call.mp3` perlu dicek kalo pake mode real.
+- **VITE_PUBLIC_URL di-commit** — IP `192.168.50.90` hardcoded di `.env`, perlu disesuaikan tiap jaringan beda.
+
+## Tech Stack
+
+React 18, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, qrcode.react, xlsx, react-router-dom v6, axios, sonner, lucide-react.

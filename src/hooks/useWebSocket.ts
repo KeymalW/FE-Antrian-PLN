@@ -6,6 +6,8 @@ type MessageHandler = (msg: WebSocketMessage) => void
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3001/ws'
 
+const HEARTBEAT_INTERVAL = 30000
+
 export function useWebSocket(handlers?: {
   onQueueUpdate?: MessageHandler
   onQueueCall?: MessageHandler
@@ -16,6 +18,7 @@ export function useWebSocket(handlers?: {
   const wsRef = useRef<WebSocket | null>(null)
   const handlersRef = useRef(handlers)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const heartbeatRef = useRef<ReturnType<typeof setInterval>>()
 
   useEffect(() => {
     handlersRef.current = handlers
@@ -28,6 +31,22 @@ export function useWebSocket(handlers?: {
 
     let cancelled = false
 
+    function startHeartbeat(socket: WebSocket) {
+      stopHeartbeat()
+      heartbeatRef.current = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'ping' }))
+        }
+      }, HEARTBEAT_INTERVAL)
+    }
+
+    function stopHeartbeat() {
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current)
+        heartbeatRef.current = undefined
+      }
+    }
+
     function connect() {
       if (cancelled) return
 
@@ -38,6 +57,7 @@ export function useWebSocket(handlers?: {
           socket.close()
           return
         }
+        startHeartbeat(socket)
       }
 
       socket.onmessage = (event) => {
@@ -58,6 +78,7 @@ export function useWebSocket(handlers?: {
       }
 
       socket.onclose = () => {
+        stopHeartbeat()
         wsRef.current = null
         if (!cancelled) {
           reconnectTimeoutRef.current = setTimeout(connect, 3000)
@@ -75,6 +96,7 @@ export function useWebSocket(handlers?: {
 
     return () => {
       cancelled = true
+      stopHeartbeat()
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }

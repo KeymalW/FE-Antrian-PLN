@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -123,6 +123,7 @@ export default function PetugasDashboard() {
   const counterNumber = user?.counterNumber ?? 1
   const isCounterPaused = counterStatus[counterNumber] ?? false
   const hasActiveTicket = lastCalled !== null
+  const fetchIdRef = useRef(0)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -130,6 +131,7 @@ export default function PetugasDashboard() {
   }, [])
 
   const fetchData = useCallback(async () => {
+    const id = ++fetchIdRef.current
     try {
       const [list, statsData, last, completed, allTickets] = await Promise.all([
         getQueueList({ status: 'waiting' }),
@@ -138,6 +140,7 @@ export default function PetugasDashboard() {
         getQueueList({ status: 'completed', perPage: 10 }),
         getQueueList({ perPage: 1000 }),
       ])
+      if (id !== fetchIdRef.current) return
       setQueueList(sortWaitingTickets(list))
       setStats(statsData)
       setLastCalled(last)
@@ -156,9 +159,11 @@ export default function PetugasDashboard() {
     },
     onQueueCall: (msg) => {
       const payload = msg.payload as QueueTicket
-      setLastCalled(payload)
-      playCallSound()
-      announceQueueCall(payload)
+      if (payload.counterNumber === counterNumber) {
+        setLastCalled(payload)
+        playCallSound()
+        announceQueueCall(payload)
+      }
       fetchData()
     },
     onQueueComplete: () => {
@@ -216,15 +221,17 @@ export default function PetugasDashboard() {
     setActionLoading(queueId)
     try {
       await completeQueue(queueId)
-      await fetchData()
 
-      const state = useQueueStore.getState()
-      const nextTicket = state.queueList[0]
-      if (nextTicket && !isCounterPaused) {
-        const result = await callQueue({ queueId: nextTicket.id, counterNumber })
-        playCallSound()
-        announceQueueCall(result)
+      if (!isCounterPaused) {
+        const state = useQueueStore.getState()
+        const nextTicket = state.queueList[0]
+        if (nextTicket) {
+          const result = await callQueue({ queueId: nextTicket.id, counterNumber })
+          playCallSound()
+          announceQueueCall(result)
+        }
       }
+
       await fetchData()
     } catch {
       // silent

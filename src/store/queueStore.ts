@@ -36,6 +36,10 @@ export const useQueueStore = create<QueueState>((set) => ({
       queueList: state.queueList.map((t) =>
         t.id === id ? { ...t, ...updates } : t,
       ),
+      lastCalled:
+        state.lastCalled?.id === id
+          ? { ...state.lastCalled, ...updates }
+          : state.lastCalled,
     })),
 
   setCounterStatus: (counter, paused) =>

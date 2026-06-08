@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse, ApiError } from '../types/api'
+import { useAuthStore } from '../store/authStore'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api',
@@ -19,8 +20,7 @@ api.interceptors.response.use(
   (res) => res,
   (error: AxiosError<ApiError>) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      useAuthStore.getState().logout()
       window.location.href = '/login'
     }
     return Promise.reject(error)
