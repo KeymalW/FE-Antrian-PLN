@@ -117,10 +117,10 @@ export default function TrackTicket() {
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-        <div className="w-full max-w-md md:max-w-lg">
+        <div className="w-full max-w-md">
           <div className="overflow-hidden rounded-xl bg-card text-center shadow-lg ring-1 ring-pln-cyan/20">
             <div className="h-2 bg-pln-cyan" />
-            <div className="p-6 sm:p-8 md:p-10">
+            <div className="p-8">
               <div
                 className={`mx-auto mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium ring-1 ${statusColors[ticket.status]}`}
               >
@@ -133,30 +133,32 @@ export default function TrackTicket() {
               <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">
                 Nomor Antrian
               </div>
-              <div className="mb-4 text-5xl font-bold text-pln-cyan md:text-6xl">
+              <div className="mb-6 text-5xl font-bold text-pln-cyan">
                 {ticket.queueNumber}
               </div>
 
-              <div className="mb-4 text-sm capitalize text-muted-foreground md:text-base">
+              <div className="mb-4 text-sm capitalize text-muted-foreground">
                 Layanan: {ticket.serviceType}
               </div>
 
-              <div className="mb-6 flex flex-col items-center gap-4 md:flex-row md:justify-center">
+              <div className="mb-6 flex justify-center">
                 <div className="inline-block rounded-lg bg-white p-2 ring-1 ring-pln-cyan/20">
                   <QRCodeCanvas value={qrValue} size={140} level="M" />
                 </div>
-                {ticket.status === 'waiting' && queuePosition !== null && (
-                  <div className="w-full rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200 md:w-auto">
-                    <div className="flex items-center justify-center gap-2 font-medium">
-                      <Clock className="size-4" />
-                      Posisi Antrian
-                    </div>
-                    <p className="mt-1 whitespace-nowrap">
-                      Antrian ke-<strong>{queuePosition}</strong>
-                    </p>
-                  </div>
-                )}
               </div>
+
+              {ticket.status === 'waiting' && queuePosition !== null && (
+                <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+                  <div className="flex items-center justify-center gap-2 font-medium">
+                    <Clock className="size-4" />
+                    Posisi Antrian
+                  </div>
+                  <p className="mt-1">
+                    Kamu adalah antrian ke-<strong>{queuePosition}</strong> dari
+                    semua yang menunggu
+                  </p>
+                </div>
+              )}
 
               {ticket.status === 'waiting' && queuePosition === null && (
                 <div className="mb-6 rounded-lg bg-pln-cyan/5 px-4 py-3 text-sm text-muted-foreground">
