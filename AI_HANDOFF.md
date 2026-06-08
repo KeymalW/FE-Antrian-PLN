@@ -43,10 +43,10 @@ State mock di-persist ke `sessionStorage` dengan key `mockQueueState` biar gak i
 | File | Component | Fungsi |
 |---|---|---|
 | `Kiosk.tsx` | Kiosk | Ambil tiket (4 layanan), estimasi waktu tunggu, redirect ke `/track/:id` setelah sukses |
-| `TrackTicket.tsx` | TrackTicket | Tracking via URL param, QR code, tombol cetak (hidden print template), polling tiap 5 detik, link demo kalo tiket gak ditemukan |
+| `TrackTicket.tsx` | TrackTicket | Tracking via URL param, QR code, tombol cetak (hidden print template), polling tiap 5 detik (stop kalo status completed/skipped), link demo kalo tiket gak ditemukan |
 | `MonitorTV.tsx` | MonitorTV | 3 counter card + waiting list auto-scroll, jam real-time, badge ISTIRAHAT kalo counter status paused |
 | `PetugasDashboard.tsx` | PetugasDashboard | Panggil/skip/complete tiket, auto-call next setelah selesai, toggle istirahat, grafik mingguan, polling durasi per detik. WS `onQueueCall` filter by `counterNumber` biar gak desync. `fetchData` pake abort-on-stale (fetchIdRef) biar gak race condition. `handleComplete` single fetch aja. |
-| `AdminDashboard.tsx` | AdminDashboard | Multi-counter status, statistik real-time, waiting list, riwayat selesai, grafik mingguan bar chart, export Excel, clear history |
+| `AdminDashboard.tsx` | AdminDashboard | Multi-counter status, statistik real-time, waiting list, riwayat selesai, grafik mingguan bar chart, export Excel, clear history. `fetchData` pake stale guard. Elapsed time real-time tiap detik. |
 | `Login.tsx` | Login | Login form, redirect based on role |
 
 ## Stores (Zustand)
@@ -96,7 +96,9 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 | `VITE_SOUND_URL` | `/sounds/call.mp3` | hooks/useQueueSound.ts |
 | `VITE_PUBLIC_URL` | `window.location.origin` | pages/TrackTicket.tsx |
 
-## Recent Bug Fixes (Session 2026-06-08)
+## Recent Bug Fixes
+
+### Session 1 (2026-06-08)
 
 | # | Bug | Fix |
 |---|-----|-----|
@@ -106,6 +108,18 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 | 4 | **401 redirect pake hardcode localStorage** | Pake `useAuthStore.getState().logout()` di `api.ts:23` |
 | 5 | **Double fetch di `handleComplete`** | Hapus fetch pertama, cukup 1 fetch di akhir (`PetugasDashboard.tsx:220-241`) |
 | 6 | **Race condition fetchData** | Pake `fetchIdRef` counter + stale check (`PetugasDashboard.tsx:126,134,143`) |
+
+### Session 2 (2026-06-08)
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 7 | **Race condition fetchData AdminDashboard** | Nambah `fetchIdRef` + stale check di `AdminDashboard.tsx:106,117` |
+| 8 | **Race condition fetchAll MonitorTV** | Nambah `fetchIdRef` + stale check di `MonitorTV.tsx:31,42,48` |
+| 9 | **Desync MonitorTV → PetugasDashboard** | Hapus `setLastCalled(payload)` dari `MonitorTV.tsx` — MonitorTV punya `lastCalledList` sendiri |
+| 10 | **TrackTicket polling gak berhenti** | `fetchTicket` clear interval kalo status `completed`/`skipped` (`TrackTicket.tsx:52-54`) |
+| 11 | **Kiosk useEffect tanpa cleanup** | Nambah `cancelled` flag di `Kiosk.tsx:40,46,49` |
+| 12 | **AdminDashboard elapsed gak real-time** | Nambah `now` state + interval tiap detik, `formatElapsed` pake param `now` (`AdminDashboard.tsx:96-99,78`) |
+| 14 | **Kiosk type assertion** | Ganti type ke `Record<string, ...>` biar gak bohong (`Kiosk.tsx:34`) |
 
 ## Known Issues / Next Steps
 
