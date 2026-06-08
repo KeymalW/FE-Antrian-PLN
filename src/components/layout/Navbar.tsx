@@ -36,7 +36,7 @@ export function Navbar() {
             Kiosk
           </Link>
           {isAuthenticated && (
-            <Link to="/admin" className={`no-underline ${isActive('/admin') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
+            <Link to={user?.role === 'admin' ? '/admin' : '/petugas'} className={`no-underline ${isActive('/admin') || isActive('/petugas') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
               Dashboard
             </Link>
           )}

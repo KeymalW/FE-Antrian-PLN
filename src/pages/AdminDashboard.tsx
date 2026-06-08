@@ -1,14 +1,9 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
-import { useAuthStore } from '../store/authStore'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { useQueueSound } from '../hooks/useQueueSound'
 import {
   getQueueList,
   getQueueStats,
-  callQueue,
-  skipQueue,
-  completeQueue,
   getLastCalled,
   clearQueueHistory,
 } from '../services/queue'
@@ -16,14 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
-import { Spinner } from '../components/ui/spinner'
 import { ScrollArea } from '../components/ui/scroll-area'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
-import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon } from 'lucide-react'
 import {
-  getServiceLabel,
-  getServiceSortScore,
-} from '../lib/serviceTypes'
+  ChevronDownIcon,
+  ChevronUpIcon,
+  BarChart3Icon,
+  Trash2Icon,
+  RotateCcwIcon,
+  RefreshCwIcon,
+} from 'lucide-react'
+import { getServiceLabel } from '../lib/serviceTypes'
 import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
 
 const ServiceSummaryChart = lazy(() =>
@@ -48,6 +46,8 @@ const statusColor: Record<QueueStatus, string> = {
   skipped: 'bg-gray-100 text-gray-600',
 }
 
+const COUNTERS = [1, 2, 3]
+
 function QueueStatusBadge({ status }: { status: QueueStatus }) {
   return <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
 }
@@ -71,14 +71,12 @@ function formatClock(value: string | null) {
   })
 }
 
-function formatElapsed(start: string | null, now: Date) {
+function formatElapsed(start: string | null) {
   if (!start) return '--:--'
-
-  const diff = Math.max(0, now.getTime() - new Date(start).getTime())
+  const diff = Math.max(0, Date.now() - new Date(start).getTime())
   const totalSeconds = Math.floor(diff / 1000)
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
-
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
@@ -90,145 +88,51 @@ function sortRecentCompleted(tickets: QueueTicket[]) {
   })
 }
 
-function sortWaitingTickets(tickets: QueueTicket[]) {
-  return [...tickets].sort((a, b) => {
-    const aScore = getServiceSortScore(a.serviceType)
-    const bScore = getServiceSortScore(b.serviceType)
-
-    if (aScore.group !== bScore.group) return aScore.group - bScore.group
-    if (aScore.order !== bScore.order) return aScore.order - bScore.order
-
-    const queueCompare = a.queueNumber.localeCompare(b.queueNumber, 'id', {
-      numeric: true,
-      sensitivity: 'base',
-    })
-
-    if (queueCompare !== 0) return queueCompare
-
-    return a.createdAt.localeCompare(b.createdAt)
-  })
-}
-
 export default function AdminDashboard() {
-  const { user } = useAuthStore()
-  const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled } = useQueueStore()
-  const { playCallSound, playBeep, announceQueueCall } = useQueueSound()
+  const { stats, setStats } = useQueueStore()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [waitingQueue, setWaitingQueue] = useState<QueueTicket[]>([])
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
+  const [counters, setCounters] = useState<(QueueTicket | null)[]>([null, null, null])
   const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
-  const [isCounterPaused, setIsCounterPaused] = useState(false)
   const [showServiceSummary, setShowServiceSummary] = useState(false)
-  const [now, setNow] = useState(new Date())
-
-  const counterNumber = user?.counterNumber ?? 1
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   const fetchData = useCallback(async () => {
     try {
-      const [list, statsData, last, completed, allTickets] = await Promise.all([
+      const [list, statsData, completed, allTickets, c1, c2, c3] = await Promise.all([
         getQueueList({ status: 'waiting' }),
         getQueueStats(),
-        getLastCalled(counterNumber),
-        getQueueList({ status: 'completed', perPage: 10 }),
+        getQueueList({ status: 'completed', perPage: 20 }),
         getQueueList({ perPage: 1000 }),
+        getLastCalled(1),
+        getLastCalled(2),
+        getLastCalled(3),
       ])
-      setQueueList(sortWaitingTickets(list))
+      setWaitingQueue(list)
       setStats(statsData)
-      setLastCalled(last)
       setRecentCompleted(sortRecentCompleted(completed))
+      setCounters([c1, c2, c3])
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
-      console.error('Failed to fetch queue data')
+      console.error('Failed to fetch data')
     } finally {
       setLoading(false)
     }
-  }, [counterNumber, setQueueList, setStats, setLastCalled])
+  }, [setStats])
 
   useWebSocket({
-    onQueueUpdate: () => {
-      fetchData()
-    },
-    onQueueCall: (msg) => {
-      const payload = msg.payload as QueueTicket
-      setLastCalled(payload)
-      playCallSound()
-      announceQueueCall(payload)
-      fetchData()
-    },
-    onQueueComplete: () => {
-      fetchData()
-    },
-    onQueueSkip: () => {
-      fetchData()
-    },
-    onStatsUpdate: (msg) => {
-      setStats(msg.payload as QueueStats)
-    },
+    onQueueUpdate: () => fetchData(),
+    onQueueCall: () => fetchData(),
+    onQueueComplete: () => fetchData(),
+    onQueueSkip: () => fetchData(),
+    onStatsUpdate: (msg) => setStats(msg.payload as QueueStats),
   })
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchData()
-    }, 0)
-
+    const timer = window.setTimeout(() => void fetchData(), 0)
     return () => window.clearTimeout(timer)
   }, [fetchData])
-
-  const handleCall = async (queueId: string) => {
-    if (isCounterPaused) {
-      playBeep()
-      return
-    }
-
-    setActionLoading(queueId)
-    try {
-      const result = await callQueue({ queueId, counterNumber })
-      setLastCalled(result)
-      playCallSound()
-      announceQueueCall(result)
-      await fetchData()
-    } catch {
-      playBeep()
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleSkip = async (queueId: string) => {
-    setActionLoading(queueId)
-    try {
-      await skipQueue(queueId)
-      await fetchData()
-    } catch {
-      // silent
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleComplete = async (queueId: string) => {
-    setActionLoading(queueId)
-    try {
-      await completeQueue(queueId)
-      setLastCalled(null)
-      await fetchData()
-    } catch {
-      // silent
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleRecall = () => {
-    if (!lastCalled) return
-    playCallSound()
-    announceQueueCall(lastCalled)
-  }
 
   const handleClearHistory = async () => {
     setActionLoading('clear-history')
@@ -244,100 +148,109 @@ export default function AdminDashboard() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard Petugas</h1>
+          <h1 className="text-2xl font-bold">Dashboard Admin</h1>
           <p className="text-sm text-muted-foreground">
-            Sedang dilayani di Counter #{counterNumber} - {user?.name}
+            Pantau dan kelola seluruh antrian
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge
-            className={isCounterPaused ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}
-          >
-            {isCounterPaused ? 'Loket Istirahat' : 'Loket Aktif'}
-          </Badge>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsCounterPaused((prev) => !prev)}
+            onClick={() => fetchData()}
+            disabled={loading}
           >
-            {isCounterPaused ? 'Aktifkan Loket' : 'Istirahat Loket'}
+            <RefreshCwIcon className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {stats
-          ? <StatCards stats={stats} />
-          : Array.from({ length: 5 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
+          ? (
+            <>
+              <StatCard label="Total" value={stats.total} color="text-foreground" />
+              <StatCard label="Menunggu" value={stats.waiting} color="text-yellow-600" />
+              <StatCard label="Dipanggil" value={stats.called} color="text-blue-600" />
+              <StatCard label="Dilayani" value={stats.serving} color="text-green-600" />
+              <StatCard label="Selesai" value={stats.completed} color="text-green-700" />
+              <StatCard label="Dilewati" value={stats.skipped} color="text-gray-500" />
+            </>
+          )
+          : Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Card>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {COUNTERS.map((num) => {
+              const active = counters[num - 1]
+              return (
+                <Card key={num}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Loket #{num}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    {loading ? (
+                      <Skeleton className="mx-auto h-8 w-20" />
+                    ) : active ? (
+                      <>
+                        <div className="text-3xl font-bold text-green-600">
+                          {active.queueNumber}
+                        </div>
+                        <div className="mt-1 text-xs capitalize text-muted-foreground">
+                          {getServiceLabel(active.serviceType)}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {active.status === 'serving' ? 'Dilayani' : 'Dipanggil'} • {formatElapsed(active.calledAt)}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-4 text-sm text-muted-foreground">Tidak ada</div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Antrian Menunggu ({queueList.length})</CardTitle>
+              <CardTitle>Antrian Menunggu ({waitingQueue.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              {isCounterPaused && (
-                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  Loket sedang istirahat. Tombol Panggil dinonaktifkan sementara.
-                </div>
-              )}
-
               {loading ? (
                 <div className="flex flex-col gap-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <CardSkeleton key={i} />
-                  ))}
+                  {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
                 </div>
-              ) : queueList.length === 0 ? (
+              ) : waitingQueue.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <p className="text-lg font-medium">Tidak ada antrian</p>
-                  <p className="text-sm">Semua antrian sudah selesai</p>
                 </div>
               ) : (
                 <ScrollArea className="h-[16rem] pr-3">
-                  {queueList.map((q) => (
+                  {waitingQueue.map((q) => (
                     <div
                       key={q.id}
-                      className="grid gap-3 border-b py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                      className="flex items-center justify-between border-b py-3 last:border-b-0"
                     >
-                      <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <span className="text-lg font-bold tabular-nums text-primary">
                           {q.queueNumber}
                         </span>
-                        <div className="min-w-0 flex flex-col">
-                          <span className="truncate text-sm capitalize text-muted-foreground">
+                        <div>
+                          <span className="text-sm capitalize text-muted-foreground">
                             {getServiceLabel(q.serviceType)}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            Dicetak {formatClock(q.createdAt)}
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {formatClock(q.createdAt)}
                           </span>
                         </div>
-                        <QueueStatusBadge status={q.status} />
                       </div>
-                      <div className="flex flex-wrap gap-2 md:justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => handleCall(q.id)}
-                          disabled={actionLoading === q.id || isCounterPaused}
-                        >
-                          {actionLoading === q.id && <Spinner data-icon="inline-start" />}
-                          Panggil
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
-                          onClick={() => handleSkip(q.id)}
-                        >
-                          Skip
-                        </Button>
-                      </div>
+                      <QueueStatusBadge status={q.status} />
                     </div>
                   ))}
                 </ScrollArea>
@@ -381,61 +294,8 @@ export default function AdminDashboard() {
 
         <div>
           <Card>
-            <CardHeader>
-              <CardTitle>Sedang Dilayani di Counter #{counterNumber}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {lastCalled ? (
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-green-600">
-                    {lastCalled.queueNumber}
-                  </div>
-                  <div className="mt-1 text-sm capitalize text-muted-foreground">
-                    {getServiceLabel(lastCalled.serviceType)}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Dipanggil di Counter #{lastCalled.counterNumber ?? counterNumber}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Waktu panggil {formatClock(lastCalled.calledAt)} • Durasi {formatElapsed(lastCalled.calledAt, now)}
-                  </div>
-                  <div className="mt-4 flex justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleComplete(lastCalled.id)}
-                      disabled={actionLoading === lastCalled.id}
-                    >
-                      {actionLoading === lastCalled.id && <Spinner data-icon="inline-start" />}
-                      Selesai
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleRecall}
-                    >
-                      Panggil Ulang
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
-                      onClick={() => handleSkip(lastCalled.id)}
-                    >
-                      Skip
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>Tidak ada</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="mt-4">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Antrian Terakhir Dilayani</CardTitle>
+              <CardTitle>Riwayat Selesai</CardTitle>
               {recentCompleted.length > 0 && (
                 <Button
                   variant="ghost"
@@ -445,7 +305,7 @@ export default function AdminDashboard() {
                   disabled={actionLoading === 'clear-history'}
                 >
                   {actionLoading === 'clear-history' ? (
-                    <Spinner className="size-4" />
+                    <Skeleton className="size-4 rounded-full" />
                   ) : (
                     <Trash2Icon className="size-4" />
                   )}
@@ -454,13 +314,15 @@ export default function AdminDashboard() {
               )}
             </CardHeader>
             <CardContent>
-              {recentCompleted.length === 0 ? (
+              {loading ? (
+                <CardSkeleton />
+              ) : recentCompleted.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
-                  <p>Belum ada riwayat selesai</p>
+                  <p>Belum ada riwayat</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[4.5rem] pr-3">
-                  <div className="space-y-3">
+                <ScrollArea className="h-[22rem] pr-3">
+                  <div className="space-y-2">
                     {recentCompleted.map((ticket) => (
                       <div
                         key={ticket.id}
@@ -471,10 +333,13 @@ export default function AdminDashboard() {
                             {ticket.queueNumber}
                           </div>
                           <div className="text-xs capitalize text-muted-foreground">
-                            {getServiceLabel(ticket.serviceType)} • Selesai {formatClock(ticket.completedAt)}
+                            {getServiceLabel(ticket.serviceType)}
+                            {ticket.counterNumber && ` • Loket ${ticket.counterNumber}`}
                           </div>
                         </div>
-                        <Badge className="bg-green-100 text-green-800">Selesai</Badge>
+                        <div className="text-right text-xs text-muted-foreground">
+                          {formatClock(ticket.completedAt)}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -485,17 +350,17 @@ export default function AdminDashboard() {
 
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle>Aksi Cepat</CardTitle>
+              <CardTitle>Pengaturan</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-3">
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => fetchData()}
-                disabled={loading}
+                onClick={handleClearHistory}
+                disabled={actionLoading === 'clear-history'}
               >
-                {loading && <Spinner data-icon="inline-start" />}
-                {loading ? 'Memuat...' : 'Refresh Data'}
+                <RotateCcwIcon className="mr-2 size-4" />
+                Reset Semua Antrian
               </Button>
             </CardContent>
           </Card>
@@ -505,25 +370,13 @@ export default function AdminDashboard() {
   )
 }
 
-function StatCards({ stats }: { stats: QueueStats }) {
-  const items: { label: string; value: number; color: string }[] = [
-    { label: 'Total', value: stats.total, color: 'text-foreground' },
-    { label: 'Menunggu', value: stats.waiting, color: 'text-yellow-600' },
-    { label: 'Dipanggil', value: stats.called, color: 'text-blue-600' },
-    { label: 'Dilayani', value: stats.serving, color: 'text-green-600' },
-    { label: 'Selesai', value: stats.completed, color: 'text-green-700' },
-  ]
-
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <>
-      {items.map((item) => (
-        <Card key={item.label} size="sm">
-          <CardContent className="text-center">
-            <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
-            <div className="text-xs text-muted-foreground">{item.label}</div>
-          </CardContent>
-        </Card>
-      ))}
-    </>
+    <Card size="sm">
+      <CardContent className="text-center">
+        <div className={`text-2xl font-bold ${color}`}>{value}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+      </CardContent>
+    </Card>
   )
 }

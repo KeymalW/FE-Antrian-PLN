@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from './components/ui/ca
 import { Toaster } from './components/ui/sonner'
 import Kiosk from './pages/Kiosk'
 import AdminDashboard from './pages/AdminDashboard'
+import PetugasDashboard from './pages/PetugasDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
 import TrackTicket from './pages/TrackTicket'
@@ -86,8 +87,16 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute roles={['admin', 'petugas']}>
+              <ProtectedRoute roles={['admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/petugas"
+            element={
+              <ProtectedRoute roles={['petugas']}>
+                <PetugasDashboard />
               </ProtectedRoute>
             }
           />
