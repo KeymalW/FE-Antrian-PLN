@@ -31,20 +31,24 @@ export default function Kiosk() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [estimates, setEstimates] = useState<Record<ServiceType, EstimatedWait | null>>(
-    {} as Record<ServiceType, EstimatedWait | null>,
-  )
+  const [estimates, setEstimates] = useState<Record<string, EstimatedWait | null>>({})
 
   useEffect(() => {
+    let cancelled = false
     const allTypes: ServiceType[] = ['pembayaran', 'pengaduan', 'pendaftaran', 'informasi']
+
     allTypes.forEach(async (t) => {
       try {
         const est = await getEstimatedWaitTime(t)
-        setEstimates((prev) => ({ ...prev, [t]: est }))
+        if (!cancelled) setEstimates((prev) => ({ ...prev, [t]: est }))
       } catch {
-        setEstimates((prev) => ({ ...prev, [t]: null }))
+        if (!cancelled) setEstimates((prev) => ({ ...prev, [t]: null }))
       }
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handleTakeTicket = async (serviceType: ServiceType) => {

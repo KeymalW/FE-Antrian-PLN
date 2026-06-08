@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import {
@@ -71,9 +71,9 @@ function formatClock(value: string | null) {
   })
 }
 
-function formatElapsed(start: string | null) {
+function formatElapsed(start: string | null, now: Date) {
   if (!start) return '--:--'
-  const diff = Math.max(0, Date.now() - new Date(start).getTime())
+  const diff = Math.max(0, now.getTime() - new Date(start).getTime())
   const totalSeconds = Math.floor(diff / 1000)
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -97,8 +97,16 @@ export default function AdminDashboard() {
   const [counters, setCounters] = useState<(QueueTicket | null)[]>([null, null, null])
   const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
   const [showServiceSummary, setShowServiceSummary] = useState(false)
+  const [now, setNow] = useState(new Date())
+  const fetchIdRef = useRef(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchData = useCallback(async () => {
+    const id = ++fetchIdRef.current
     try {
       const [list, statsData, completed, allTickets, c1, c2, c3] = await Promise.all([
         getQueueList({ status: 'waiting' }),
@@ -109,6 +117,7 @@ export default function AdminDashboard() {
         getLastCalled(2),
         getLastCalled(3),
       ])
+      if (id !== fetchIdRef.current) return
       setWaitingQueue(list)
       setStats(statsData)
       setRecentCompleted(sortRecentCompleted(completed))
@@ -215,7 +224,7 @@ export default function AdminDashboard() {
                           {getServiceLabel(active.serviceType)}
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
-                          {active.status === 'serving' ? 'Dilayani' : 'Dipanggil'} • {formatElapsed(active.calledAt)}
+                          {active.status === 'serving' ? 'Dilayani' : 'Dipanggil'} • {formatElapsed(active.calledAt, now)}
                         </div>
                       </>
                     ) : (

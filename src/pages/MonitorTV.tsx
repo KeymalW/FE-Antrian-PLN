@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
@@ -10,13 +10,14 @@ import type { QueueTicket } from '../types/queue'
 const COUNTERS = [1, 2, 3]
 
 export default function MonitorTV() {
-  const { setQueueList, setLastCalled, counterStatus } = useQueueStore()
+  const { setQueueList, counterStatus } = useQueueStore()
   const { playCallSound, announceQueueCall } = useQueueSound()
   const [waitingList, setWaitingList] = useState<QueueTicket[]>([])
   const [lastCalledList, setLastCalledList] = useState<(QueueTicket | null)[]>(
     Array(COUNTERS.length).fill(null),
   )
   const [time, setTime] = useState(new Date())
+  const fetchIdRef = useRef(0)
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -24,15 +25,18 @@ export default function MonitorTV() {
   }, [])
 
   const fetchAll = useCallback(async () => {
+    const id = ++fetchIdRef.current
     const [list] = await Promise.all([
       getQueueList({ status: 'waiting', perPage: 50 }),
     ])
+    if (id !== fetchIdRef.current) return
     setWaitingList(list)
     setQueueList(list)
 
     const calledData = await Promise.all(
       COUNTERS.map((c) => getLastCalled(c)),
     )
+    if (id !== fetchIdRef.current) return
     setLastCalledList(calledData)
   }, [setQueueList])
 
@@ -47,7 +51,6 @@ export default function MonitorTV() {
           return next
         })
       }
-      setLastCalled(payload)
       playCallSound()
       announceQueueCall(payload)
       fetchAll()

@@ -42,29 +42,42 @@ export default function TrackTicket() {
 
   useEffect(() => {
     if (!id) return
+    let cancelled = false
+    let interval: ReturnType<typeof setInterval>
 
     const fetchTicket = async () => {
       try {
         const t = await getTicketById(id)
+        if (cancelled) return
+
+        if (t && (t.status === 'completed' || t.status === 'skipped')) {
+          clearInterval(interval)
+        }
+
         setTicket(t)
 
         if (t && t.status === 'waiting') {
           const all = await getQueueList({ status: 'waiting' })
+          if (cancelled) return
           const pos = all.findIndex((x) => x.id === t.id)
           setQueuePosition(pos >= 0 ? pos + 1 : null)
         } else {
           setQueuePosition(null)
         }
       } catch {
-        setError('Tiket tidak ditemukan')
+        if (!cancelled) setError('Tiket tidak ditemukan')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchTicket()
-    const interval = setInterval(fetchTicket, 5000)
-    return () => clearInterval(interval)
+    interval = setInterval(fetchTicket, 5000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [id])
 
   const handlePrint = () => {
