@@ -8,6 +8,7 @@ import Kiosk from './pages/Kiosk'
 import AdminDashboard from './pages/AdminDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
+import TrackTicket from './pages/TrackTicket'
 
 const cards = [
   {
@@ -92,6 +93,7 @@ export default function App() {
           />
         </Route>
         <Route path="/monitor" element={<MonitorTV />} />
+        <Route path="/track/:id" element={<TrackTicket />} />
       </Routes>
       <Toaster />
     </Router>

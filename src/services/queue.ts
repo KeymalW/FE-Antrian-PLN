@@ -6,6 +6,7 @@ import {
   mockGetLastCalled,
   mockGetQueueList,
   mockGetQueueStats,
+  mockGetTicketById,
   mockSkipQueue,
   mockTakeTicket,
 } from '../mocks/mockBackend'
@@ -69,6 +70,15 @@ export async function getQueueStats(): Promise<QueueStats> {
   }
 
   const res = await get<QueueStats>('/queue/stats')
+  return res.data
+}
+
+export async function getTicketById(id: string): Promise<QueueTicket | null> {
+  if (USE_MOCK_DATA) {
+    return mockGetTicketById(id)
+  }
+
+  const res = await get<QueueTicket | null>(`/queue/${id}`)
   return res.data
 }
 
