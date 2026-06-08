@@ -122,6 +122,7 @@ export default function PetugasDashboard() {
 
   const counterNumber = user?.counterNumber ?? 1
   const isCounterPaused = counterStatus[counterNumber] ?? false
+  const hasActiveTicket = lastCalled !== null
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -215,7 +216,15 @@ export default function PetugasDashboard() {
     setActionLoading(queueId)
     try {
       await completeQueue(queueId)
-      setLastCalled(null)
+      await fetchData()
+
+      const state = useQueueStore.getState()
+      const nextTicket = state.queueList[0]
+      if (nextTicket && !isCounterPaused) {
+        const result = await callQueue({ queueId: nextTicket.id, counterNumber })
+        playCallSound()
+        announceQueueCall(result)
+      }
       await fetchData()
     } catch {
       // silent
@@ -288,6 +297,12 @@ export default function PetugasDashboard() {
                 </div>
               )}
 
+              {hasActiveTicket && !isCounterPaused && (
+                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  Selesaikan antrian yang sedang dilayani terlebih dahulu sebelum memanggil antrian baru.
+                </div>
+              )}
+
               {loading ? (
                 <div className="flex flex-col gap-3">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -324,7 +339,7 @@ export default function PetugasDashboard() {
                         <Button
                           size="sm"
                           onClick={() => handleCall(q.id)}
-                          disabled={actionLoading === q.id || isCounterPaused}
+                          disabled={actionLoading === q.id || isCounterPaused || hasActiveTicket}
                         >
                           {actionLoading === q.id && <Spinner data-icon="inline-start" />}
                           Panggil
