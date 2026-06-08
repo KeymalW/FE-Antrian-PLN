@@ -539,6 +539,11 @@ export function mockGetQueueStats(): QueueStats {
   return totals
 }
 
+export function mockGetTicketById(id: string): QueueTicket | null {
+  const ticket = mockState.tickets.find((t) => t.id === id)
+  return ticket ? clone(ticket) : null
+}
+
 export function mockGetLastCalled(counterNumber: number): QueueTicket | null {
   return getActiveTicket(counterNumber)
 }

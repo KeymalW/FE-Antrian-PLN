@@ -82,3 +82,73 @@ body {
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.5);
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-only,
+  .print-only * {
+    visibility: visible;
+  }
+  .print-only {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    z-index: 9999;
+  }
+  .print-ticket {
+    width: 320px;
+    padding: 24px;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+    color: black;
+  }
+  .print-header {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  .print-title {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    border-bottom: 2px dashed black;
+    padding-bottom: 8px;
+  }
+  .print-number {
+    font-size: 48px;
+    font-weight: bold;
+    margin: 12px 0;
+    letter-spacing: 4px;
+  }
+  .print-service {
+    font-size: 14px;
+    text-transform: capitalize;
+    margin-bottom: 12px;
+  }
+  .print-divider {
+    border-top: 1px dashed black;
+    margin: 12px 0;
+  }
+  .print-qr {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0;
+  }
+  .print-footer {
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0;
+  }
+  .print-message {
+    font-size: 11px;
+    margin-top: 8px;
+    font-style: italic;
+  }
+}
