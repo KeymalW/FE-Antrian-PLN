@@ -1,4 +1,4 @@
-import { get, post, put } from './api'
+import { get, post, put, del } from './api'
 import { USE_MOCK_DATA } from '../mocks/mockMode'
 import {
   mockCallQueue,
@@ -98,4 +98,33 @@ export async function clearQueueHistory(): Promise<void> {
   }
 
   await post('/queue/clear-history', {})
+}
+
+export async function restoreTicket(ticketId: string): Promise<QueueTicket> {
+  if (USE_MOCK_DATA) {
+    const { mockRestoreTicket } = await import('../mocks/mockBackend')
+    return mockRestoreTicket(ticketId)
+  }
+
+  const res = await put<QueueTicket>(`/queue/${ticketId}/restore`)
+  return res.data
+}
+
+export async function getTrashedTickets(): Promise<QueueTicket[]> {
+  if (USE_MOCK_DATA) {
+    const { mockGetTrashedTickets } = await import('../mocks/mockBackend')
+    return mockGetTrashedTickets()
+  }
+
+  const res = await get<QueueTicket[]>('/queue/trash')
+  return res.data
+}
+
+export async function emptyTrash(): Promise<void> {
+  if (USE_MOCK_DATA) {
+    const { mockEmptyTrash } = await import('../mocks/mockBackend')
+    return mockEmptyTrash()
+  }
+
+  await del('/queue/trash')
 }

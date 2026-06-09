@@ -605,3 +605,26 @@ export function mockClearQueueHistory(): void {
   )
   saveState()
 }
+
+export function mockGetTrashedTickets(): QueueTicket[] {
+  return getSortedTickets(mockState.tickets.filter(
+    (t) => t.status === 'completed' || t.status === 'skipped',
+  )).map(clone)
+}
+
+export function mockRestoreTicket(ticketId: string): QueueTicket {
+  return updateTicket(ticketId, (ticket) => ({
+    ...ticket,
+    status: 'waiting',
+    counterNumber: null,
+    calledAt: null,
+    completedAt: null,
+  }))
+}
+
+export function mockEmptyTrash(): void {
+  mockState.tickets = mockState.tickets.filter(
+    (t) => t.status !== 'completed' && t.status !== 'skipped',
+  )
+  saveState()
+}
