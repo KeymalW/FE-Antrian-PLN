@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-router-dom'
 import { TicketIcon, ShieldAlertIcon, MonitorPlayIcon } from 'lucide-react'
 import { AppLayout } from './components/layout/AppLayout'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from './components/ui/ca
 import { Toaster } from './components/ui/sonner'
 import Kiosk from './pages/Kiosk'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminSettings from './pages/AdminSettings'
 import PetugasDashboard from './pages/PetugasDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
@@ -88,10 +89,13 @@ export default function App() {
             path="/admin"
             element={
               <ProtectedRoute roles={['admin']}>
-                <AdminDashboard />
+                <Outlet />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
           <Route
             path="/petugas"
             element={
