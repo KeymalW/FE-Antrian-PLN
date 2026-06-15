@@ -34,17 +34,18 @@ export default function Login() {
 
   return (
     <div className="mx-auto mt-20 max-w-sm px-4">
-      <Card>
+      <Card className="shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-2xl">
         <CardContent>
           <h1 className="mb-6 text-center text-2xl font-bold">
             Login Petugas
           </h1>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
+                className="bg-muted/50"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -53,10 +54,11 @@ export default function Login() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                className="bg-muted/50"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -70,7 +72,7 @@ export default function Login() {
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full font-bold hover:shadow-md active:scale-[0.98]" disabled={loading}>
               {loading && <Spinner data-icon="inline-start" />}
               {loading ? 'Memproses...' : 'Login'}
             </Button>

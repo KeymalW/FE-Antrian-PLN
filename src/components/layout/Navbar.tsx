@@ -32,15 +32,15 @@ export function Navbar() {
           </span>
         </Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link to="/kiosk" className={`no-underline ${isActive('/kiosk') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
+          <Link to="/kiosk" className={`no-underline ${isActive('/kiosk') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
             Kiosk
           </Link>
           {isAuthenticated && (
-            <Link to={user?.role === 'admin' ? '/admin' : '/petugas'} className={`no-underline ${isActive('/admin') || isActive('/petugas') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
+            <Link to={user?.role === 'admin' ? '/admin' : '/petugas'} className={`no-underline ${isActive('/admin') || isActive('/petugas') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
               Dashboard
             </Link>
           )}
-          <Link to="/monitor" className={`no-underline ${isActive('/monitor') ? 'font-medium text-white' : 'text-pln-cyan/80 hover:text-white'}`}>
+          <Link to="/monitor" className={`no-underline ${isActive('/monitor') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
             Monitor
           </Link>
         </div>
@@ -55,13 +55,13 @@ export function Navbar() {
               Logout
             </Button>
           </>
-        ) : (
+        ) : location.pathname !== '/login' ? (
           <Link to="/login">
             <Button variant="secondary" size="sm">
               Login
             </Button>
           </Link>
-        )}
+        ) : null}
       </div>
     </nav>
   )
