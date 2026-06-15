@@ -18,6 +18,8 @@ export default function MonitorTV() {
   )
   const [time, setTime] = useState(new Date())
   const fetchIdRef = useRef(0)
+  const justCalledRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [justCalledCounter, setJustCalledCounter] = useState<number | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -50,6 +52,9 @@ export default function MonitorTV() {
           if (idx >= 0) next[idx] = payload
           return next
         })
+        if (justCalledRef.current) clearTimeout(justCalledRef.current)
+        setJustCalledCounter(payload.counterNumber)
+        justCalledRef.current = setTimeout(() => setJustCalledCounter(null), 6000)
       }
       playCallSound()
       announceQueueCall(payload)
@@ -113,43 +118,50 @@ export default function MonitorTV() {
           return (
             <div
               key={counter}
-              className={`flex flex-col items-center justify-center rounded-2xl p-4 ring-1 backdrop-blur ${
+              className={`flex flex-col items-center justify-center rounded-2xl p-6 ring-1 backdrop-blur transition-all duration-500 ${
                 isPaused
                   ? 'bg-red-950/40 ring-red-500/30'
-                  : 'bg-gray-800/60 ring-pln-cyan/10'
+                  : justCalledCounter === counter
+                    ? 'bg-gray-800/60 ring-pln-cyan/50 animate-pulse'
+                    : 'bg-gray-800/60 ring-pln-cyan/10'
               }`}
             >
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-pln-cyan/70">
-                <div className={`size-2 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`} />
+              <div className="mb-5 flex items-center gap-3 text-xl font-bold uppercase tracking-wider text-pln-cyan/90">
+                <div className={`size-3 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`} />
                 Counter {counter}
               </div>
 
               {isPaused ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="rounded-full border-2 border-red-500/50 px-6 py-2 text-lg font-bold tracking-wider text-red-400">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="rounded-full border-2 border-red-500/50 px-8 py-3 text-xl font-bold tracking-wider text-red-400">
                     ISTIRAHAT
                   </div>
-                  <div className="text-4xl font-bold tracking-tight text-gray-600">---</div>
+                  <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
                 </div>
               ) : lastCalledList[idx] ? (
                 <>
-                  <div className="text-6xl font-bold tracking-tight text-pln-cyan">
+                  <div className="text-8xl font-bold tracking-tight text-pln-cyan">
                     {lastCalledList[idx]!.queueNumber}
                   </div>
-                  <div className="mt-2 text-sm capitalize text-gray-400">
+                  <div className="mt-3 text-2xl capitalize text-gray-300">
                     {lastCalledList[idx]!.serviceType}
                   </div>
                 </>
               ) : (
-                <div className="text-4xl font-bold tracking-tight text-gray-600">---</div>
+                <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
               )}
             </div>
           )
         })}
       </div>
 
-      <div className="h-[30vh] border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-4">
+      <div className="flex h-[30vh] flex-col border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-4">
         <QueueBoard waitingList={waitingList} lastCalled={null} />
+        <div className="mt-auto overflow-hidden border-t border-white/5 pt-3">
+          <p className="animate-marquee whitespace-nowrap text-sm text-white/40">
+            Pemberitahuan — Mohon siapkan KTP dan struk rekening listrik Anda ketika nomor antrian dipanggil. Terima kasih atas perhatiannya.
+          </p>
+        </div>
       </div>
     </div>
   )
