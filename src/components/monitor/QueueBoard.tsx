@@ -49,7 +49,7 @@ export function QueueBoard({ waitingList, lastCalled }: QueueBoardProps) {
           Antrian Menunggu ({waitingList.length})
         </div>
 
-        <div className="space-y-2 transition-all duration-500">
+        <div className="space-y-3 transition-all duration-500">
           {visible.length === 0 ? (
             <div className="flex h-40 items-center justify-center text-lg text-gray-500">
               Tidak ada antrian
@@ -58,7 +58,7 @@ export function QueueBoard({ waitingList, lastCalled }: QueueBoardProps) {
             visible.map((q, i) => (
               <div
                 key={q.id}
-                className={`flex items-center justify-between rounded-xl px-6 py-4 ${
+                className={`flex items-center justify-between rounded-xl px-6 py-5 ${
                   i === 0 && scrollIndex === 0
                     ? 'bg-pln-cyan/10 ring-2 ring-pln-cyan'
                     : 'bg-gray-800/60 ring-1 ring-pln-cyan/5'
@@ -78,7 +78,7 @@ export function QueueBoard({ waitingList, lastCalled }: QueueBoardProps) {
                     className={`text-lg capitalize ${
                       i === 0 && scrollIndex === 0
                         ? 'text-pln-cyan'
-                        : 'text-gray-300'
+                        : 'text-gray-100'
                     }`}
                   >
                     {q.serviceType}
@@ -87,8 +87,8 @@ export function QueueBoard({ waitingList, lastCalled }: QueueBoardProps) {
                 <span
                   className={`text-sm ${
                     i === 0 && scrollIndex === 0
-                      ? 'text-pln-cyan/70'
-                      : 'text-gray-500'
+                      ? 'text-pln-cyan/90'
+                      : 'text-gray-300'
                   }`}
                 >
                   {new Date(q.createdAt).toLocaleTimeString('id-ID', {
