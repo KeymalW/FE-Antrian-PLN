@@ -23,6 +23,10 @@ api.interceptors.response.use(
       useAuthStore.getState().logout()
       window.location.href = '/login'
     }
+    if (error.response?.status === 429) {
+      (error as AxiosError & { userMessage: string }).userMessage =
+        'Terlalu banyak permintaan. Silakan tunggu beberapa saat.'
+    }
     return Promise.reject(error)
   },
 )

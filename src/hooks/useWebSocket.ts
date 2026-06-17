@@ -7,6 +7,7 @@ type MessageHandler = (msg: WebSocketMessage) => void
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3001/ws'
 
 const HEARTBEAT_INTERVAL = 30000
+const MAX_RETRIES = 5
 
 export function useWebSocket(handlers?: {
   onQueueUpdate?: MessageHandler
@@ -19,6 +20,7 @@ export function useWebSocket(handlers?: {
   const handlersRef = useRef(handlers)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
   const heartbeatRef = useRef<ReturnType<typeof setInterval>>()
+  const retryCountRef = useRef(0)
 
   useEffect(() => {
     handlersRef.current = handlers
@@ -50,6 +52,10 @@ export function useWebSocket(handlers?: {
     function connect() {
       if (cancelled) return
 
+      if (retryCountRef.current >= MAX_RETRIES) {
+        return
+      }
+
       const socket = new WebSocket(WS_URL)
 
       socket.onopen = () => {
@@ -57,6 +63,7 @@ export function useWebSocket(handlers?: {
           socket.close()
           return
         }
+        retryCountRef.current = 0
         startHeartbeat(socket)
       }
 
@@ -80,7 +87,8 @@ export function useWebSocket(handlers?: {
       socket.onclose = () => {
         stopHeartbeat()
         wsRef.current = null
-        if (!cancelled) {
+        retryCountRef.current++
+        if (!cancelled && retryCountRef.current < MAX_RETRIES) {
           reconnectTimeoutRef.current = setTimeout(connect, 3000)
         }
       }

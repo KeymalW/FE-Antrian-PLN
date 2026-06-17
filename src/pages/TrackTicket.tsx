@@ -43,15 +43,13 @@ export default function TrackTicket() {
   useEffect(() => {
     if (!id) return
     let cancelled = false
-    let interval: ReturnType<typeof setInterval>
-
     const fetchTicket = async () => {
       try {
         const t = await getTicketById(id)
         if (cancelled) return
 
         if (t && (t.status === 'completed' || t.status === 'skipped')) {
-          clearInterval(interval)
+          if (pollTimer) clearInterval(pollTimer)
         }
 
         setTicket(t)
@@ -71,12 +69,12 @@ export default function TrackTicket() {
       }
     }
 
+    const pollTimer = setInterval(fetchTicket, 5000)
     fetchTicket()
-    interval = setInterval(fetchTicket, 5000)
 
     return () => {
       cancelled = true
-      clearInterval(interval)
+      clearInterval(pollTimer)
     }
   }, [id])
 

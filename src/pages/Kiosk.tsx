@@ -58,8 +58,10 @@ export default function Kiosk() {
     try {
       const result = await takeTicket(serviceType)
       navigate(`/track/${result.id}`)
-    } catch {
-      setError('Gagal mengambil tiket. Silakan coba lagi.')
+    } catch (err) {
+      const userMsg = (err as { userMessage?: string })?.userMessage
+      setError(userMsg ?? 'Gagal mengambil tiket. Silakan coba lagi.')
+    } finally {
       setLoading(false)
     }
   }
