@@ -1,0 +1,168 @@
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useQueueStore } from '../store/queueStore'
+import { useWebSocket } from '../hooks/useWebSocket'
+import { useQueueSound } from '../hooks/useQueueSound'
+import { getQueueList, getLastCalled } from '../services/queue'
+import { QueueBoard } from '../components/monitor/QueueBoard'
+import { PLNLogo } from '../components/layout/PLNLogo'
+import type { QueueTicket } from '../types/queue'
+
+const COUNTERS = [1, 2, 3]
+
+export default function MonitorTV() {
+  const { setQueueList, counterStatus } = useQueueStore()
+  const { playCallSound, announceQueueCall } = useQueueSound()
+  const [waitingList, setWaitingList] = useState<QueueTicket[]>([])
+  const [lastCalledList, setLastCalledList] = useState<(QueueTicket | null)[]>(
+    Array(COUNTERS.length).fill(null),
+  )
+  const [time, setTime] = useState(new Date())
+  const fetchIdRef = useRef(0)
+  const justCalledRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [justCalledCounter, setJustCalledCounter] = useState<number | null>(null)
+
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const fetchAll = useCallback(async () => {
+    const id = ++fetchIdRef.current
+    const [list] = await Promise.all([
+      getQueueList({ status: 'waiting', perPage: 50 }),
+    ])
+    if (id !== fetchIdRef.current) return
+    setWaitingList(list)
+    setQueueList(list)
+
+    const calledData = await Promise.all(
+      COUNTERS.map((c) => getLastCalled(c)),
+    )
+    if (id !== fetchIdRef.current) return
+    setLastCalledList(calledData)
+  }, [setQueueList])
+
+  useWebSocket({
+    onQueueCall: (msg) => {
+      const payload = msg.payload as QueueTicket
+      if (payload.counterNumber) {
+        setLastCalledList((prev) => {
+          const next = [...prev]
+          const idx = COUNTERS.indexOf(payload.counterNumber!)
+          if (idx >= 0) next[idx] = payload
+          return next
+        })
+        if (justCalledRef.current) clearTimeout(justCalledRef.current)
+        setJustCalledCounter(payload.counterNumber)
+        justCalledRef.current = setTimeout(() => setJustCalledCounter(null), 6000)
+      }
+      playCallSound()
+      announceQueueCall(payload)
+      fetchAll()
+    },
+    onQueueUpdate: () => { fetchAll() },
+    onQueueComplete: () => { fetchAll() },
+    onQueueSkip: () => { fetchAll() },
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      if (!cancelled) await fetchAll()
+    }
+
+    load()
+    const interval = setInterval(load, 30000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [fetchAll])
+
+  return (
+    <div className="flex h-screen flex-col bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-white">
+      <div className="flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-10 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <PLNLogo className="size-14" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-wide">
+              Sistem Antrian
+            </h1>
+            <p className="text-sm text-white/60">PT Perusahaan Listrik Negara</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-light tracking-wider">
+            {time.toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </div>
+          <div className="text-sm text-white/60">
+            {time.toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid flex-1 grid-cols-3 gap-4 overflow-hidden p-6">
+        {COUNTERS.map((counter, idx) => {
+          const isPaused = counterStatus[counter] ?? false
+          return (
+            <div
+              key={counter}
+              className={`flex flex-col items-center justify-center rounded-2xl p-6 ring-1 backdrop-blur transition-all duration-500 ${
+                isPaused
+                  ? 'bg-red-950/40 ring-red-500/30'
+                  : justCalledCounter === counter
+                    ? 'bg-gray-800/60 ring-pln-cyan/50 animate-pulse'
+                    : 'bg-gray-800/60 ring-pln-cyan/10'
+              }`}
+            >
+              <div className="mb-5 flex items-center gap-3 text-xl font-bold uppercase tracking-wider text-pln-cyan/90">
+                <div className={`size-3 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`} />
+                Counter {counter}
+              </div>
+
+              {isPaused ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="rounded-full border-2 border-red-500/50 px-8 py-3 text-xl font-bold tracking-wider text-red-400">
+                    ISTIRAHAT
+                  </div>
+                  <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
+                </div>
+              ) : lastCalledList[idx] ? (
+                <>
+                  <div className="text-8xl font-bold tracking-tight text-pln-cyan">
+                    {lastCalledList[idx]!.queueNumber}
+                  </div>
+                  <div className="mt-3 text-2xl capitalize text-gray-300">
+                    {lastCalledList[idx]!.serviceType}
+                  </div>
+                </>
+              ) : (
+                <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex h-[30vh] flex-col border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-4">
+        <QueueBoard waitingList={waitingList} lastCalled={null} />
+        <div className="mt-auto overflow-hidden border-t border-white/5 pt-3">
+          <p className="animate-marquee whitespace-nowrap text-sm text-white/40">
+            Pemberitahuan — Mohon siapkan KTP dan struk rekening listrik Anda ketika nomor antrian dipanggil. Terima kasih atas perhatiannya.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

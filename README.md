@@ -1,16 +1,70 @@
-# React + Vite
+# FE Antrian PLN
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  <img
+    src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdGc3dGpremxsM3N3dWhlbXVzdGM1bDR5aHNnbDBmdjQyNnpncm1xbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WFyw0SDUoa0nJckdD8/giphy.gif"
+    width="800"
+    alt="Demo App"
+  />
+</p>
 
-Currently, two official plugins are available:
+Sistem antrian digital PLN — kiosk ambil tiket, tracking real-time, monitor TV, dashboard petugas & admin.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Fitur
 
-## React Compiler
+- **Kiosk** — ambil tiket QR, cetak otomatis, redirect ke halaman tracking
+- **Track Ticket** — pantau status antrian via QR scan, link demo kalo tiket gak ditemukan
+- **Monitor TV** — tampilan real-time per counter, status istirahat
+- **Petugas Dashboard** — panggil/skip/complete tiket, grafik mingguan, toggle istirahat
+- **Admin Dashboard** — overview multi-counter, full stats, riwayat global, export Excel
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, qrcode.react, xlsx, react-router-dom v7
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Mulai
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build
+```
+
+## Environment
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_PUBLIC_URL` | `http://localhost:5173` | URL untuk QR code |
+| `VITE_USE_MOCK_DATA` | `true` (otomatis) | Pakai mock backend |
+
+## Mock Credentials
+
+| Username | Password | Role | Counter |
+|---|---|---|---|
+| `admin` | `admin123` | admin | - |
+| `petugas1` | `petugas123` | petugas | Loket 1 |
+| `petugas2` | `petugas123` | petugas | Loket 2 |
+| `petugas3` | `petugas123` | petugas | Loket 3 |
+
+## Routes
+
+| Path | Halaman |
+|---|---|
+| `/` | Kiosk (ambil tiket) |
+| `/track/:id` | Track tiket |
+| `/monitor` | Monitor TV |
+| `/petugas` | Dashboard petugas |
+| `/admin` | Dashboard admin |
+
+## Struktur
+
+```
+src/
+├── components/ui/   # shadcn components
+├── pages/           # route pages
+├── store/           # zustand stores
+├── services/        # API layer (mock/real)
+├── mocks/           # mock backend data
+├── lib/             # utilities
+└── types/           # TypeScript types
+```
