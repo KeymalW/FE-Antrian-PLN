@@ -4,7 +4,9 @@ import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
 import { getQueueList, getLastCalled } from '../services/queue'
 import { QueueBoard } from '../components/monitor/QueueBoard'
+import { VideoPlayer } from '../components/monitor/VideoPlayer'
 import { PLNLogo } from '../components/layout/PLNLogo'
+import { getServiceLabel } from '../lib/serviceTypes'
 import type { QueueTicket } from '../types/queue'
 
 const COUNTERS = [1, 2, 3]
@@ -16,9 +18,12 @@ export default function MonitorTV() {
   const [lastCalledList, setLastCalledList] = useState<(QueueTicket | null)[]>(
     Array(COUNTERS.length).fill(null),
   )
+  const [activeCall, setActiveCall] = useState<QueueTicket | null>(null)
+  const [activeCallPulse, setActiveCallPulse] = useState(false)
+  const [callCount, setCallCount] = useState(0)
   const [time, setTime] = useState(new Date())
   const fetchIdRef = useRef(0)
-  const justCalledRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pulseRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [justCalledCounter, setJustCalledCounter] = useState<number | null>(null)
 
   useEffect(() => {
@@ -40,6 +45,16 @@ export default function MonitorTV() {
     )
     if (id !== fetchIdRef.current) return
     setLastCalledList(calledData)
+
+    const valid = calledData.filter(Boolean) as QueueTicket[]
+    if (valid.length > 0) {
+      const sorted = valid.sort(
+        (a, b) =>
+          new Date(b.calledAt ?? b.createdAt).getTime() -
+          new Date(a.calledAt ?? a.createdAt).getTime(),
+      )
+      setActiveCall(sorted[0])
+    }
   }, [setQueueList])
 
   useWebSocket({
@@ -52,10 +67,18 @@ export default function MonitorTV() {
           if (idx >= 0) next[idx] = payload
           return next
         })
-        if (justCalledRef.current) clearTimeout(justCalledRef.current)
-        setJustCalledCounter(payload.counterNumber)
-        justCalledRef.current = setTimeout(() => setJustCalledCounter(null), 6000)
       }
+
+      if (pulseRef.current) clearTimeout(pulseRef.current)
+      setActiveCall(payload)
+      setActiveCallPulse(true)
+      setCallCount((c) => c + 1)
+      setJustCalledCounter(payload.counterNumber)
+      pulseRef.current = setTimeout(() => {
+        setActiveCallPulse(false)
+        setJustCalledCounter(null)
+      }, 6000)
+
       playCallSound()
       announceQueueCall(payload)
       fetchAll()
@@ -67,14 +90,11 @@ export default function MonitorTV() {
 
   useEffect(() => {
     let cancelled = false
-
     const load = async () => {
       if (!cancelled) await fetchAll()
     }
-
     load()
     const interval = setInterval(load, 30000)
-
     return () => {
       cancelled = true
       clearInterval(interval)
@@ -83,9 +103,10 @@ export default function MonitorTV() {
 
   return (
     <div className="flex h-screen flex-col bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-white">
-      <div className="flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-10 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <PLNLogo className="size-14" />
+          <PLNLogo className="size-12" />
           <div>
             <h1 className="text-2xl font-bold tracking-wide">
               Sistem Antrian
@@ -112,56 +133,127 @@ export default function MonitorTV() {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-3 gap-4 overflow-hidden p-6">
-        {COUNTERS.map((counter, idx) => {
-          const isPaused = counterStatus[counter] ?? false
-          return (
-            <div
-              key={counter}
-              className={`flex flex-col items-center justify-center rounded-2xl p-6 ring-1 backdrop-blur transition-all duration-500 ${
-                isPaused
-                  ? 'bg-red-950/40 ring-red-500/30'
-                  : justCalledCounter === counter
-                    ? 'bg-gray-800/60 ring-pln-cyan/50 animate-pulse'
-                    : 'bg-gray-800/60 ring-pln-cyan/10'
-              }`}
-            >
-              <div className="mb-5 flex items-center gap-3 text-xl font-bold uppercase tracking-wider text-pln-cyan/90">
-                <div className={`size-3 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`} />
-                Counter {counter}
-              </div>
+      {/* Top Section: Video + Active Call */}
+      <div className="flex flex-[5] min-h-0 gap-4 p-6 pb-2">
+        {/* Video Player */}
+        <div className="flex w-1/2">
+          <VideoPlayer
+            youtubeIds={['v2Q_1n1il-4', 'd7jQzkWaqxg']}
+            className="w-full"
+          />
+        </div>
 
-              {isPaused ? (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="rounded-full border-2 border-red-500/50 px-8 py-3 text-xl font-bold tracking-wider text-red-400">
-                    ISTIRAHAT
-                  </div>
-                  <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
+        {/* Active Call */}
+        <div
+          className={`flex w-1/2 flex-col items-center justify-center rounded-2xl bg-gray-800/60 ring-1 backdrop-blur transition-all duration-500 ${
+            activeCallPulse ? 'ring-pln-cyan/50 animate-call-glow' : 'ring-pln-cyan/10'
+          }`}
+        >
+          {activeCall ? (
+            <>
+              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-pln-cyan/70">
+                Nomor Panggilan
+              </div>
+              <div
+                key={callCount}
+                className={`text-8xl font-bold tracking-tight text-pln-cyan ${
+                  activeCallPulse ? 'animate-call-pop' : ''
+                }`}
+              >
+                {activeCall.queueNumber}
+              </div>
+              <div className="mt-3 text-3xl capitalize text-gray-200">
+                {getServiceLabel(activeCall.serviceType)}
+              </div>
+              {activeCall.counterNumber != null && (
+                <div className="mt-2 flex items-center gap-2 text-xl text-gray-400">
+                  <div className="size-3 rounded-full bg-pln-cyan" />
+                  Loket {activeCall.counterNumber}
                 </div>
-              ) : lastCalledList[idx] ? (
-                <>
-                  <div className="text-8xl font-bold tracking-tight text-pln-cyan">
-                    {lastCalledList[idx]!.queueNumber}
-                  </div>
-                  <div className="mt-3 text-2xl capitalize text-gray-300">
-                    {lastCalledList[idx]!.serviceType}
-                  </div>
-                </>
-              ) : (
-                <div className="text-6xl font-bold tracking-tight text-gray-600">---</div>
               )}
-            </div>
-          )
-        })}
+            </>
+          ) : (
+            <>
+              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-pln-cyan/70">
+                Nomor Panggilan
+              </div>
+              <div className="text-8xl font-bold tracking-tight text-gray-600">
+                ---
+              </div>
+              <div className="mt-3 text-3xl capitalize text-gray-600">
+                Menunggu
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="flex h-[30vh] flex-col border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-4">
-        <QueueBoard waitingList={waitingList} lastCalled={null} />
-        <div className="mt-auto overflow-hidden border-t border-white/5 pt-3">
-          <p className="animate-marquee whitespace-nowrap text-sm text-white/40">
-            Pemberitahuan — Mohon siapkan KTP dan struk rekening listrik Anda ketika nomor antrian dipanggil. Terima kasih atas perhatiannya.
-          </p>
+      {/* Bottom Section: Counter Cards + QueueBoard */}
+      <div className="flex flex-[4] min-h-0 gap-4 px-6 pb-4 pt-2">
+        {/* Counter Cards */}
+        <div className="flex flex-[3] gap-3">
+          {COUNTERS.map((counter, idx) => {
+            const isPaused = counterStatus[counter] ?? false
+            return (
+              <div
+                key={counter}
+                className={`flex flex-1 flex-col items-center justify-center rounded-2xl p-4 ring-1 backdrop-blur transition-all duration-500 ${
+                  isPaused
+                    ? 'bg-red-950/40 ring-red-500/30'
+                    : justCalledCounter === counter
+                      ? 'bg-gray-800/60 ring-pln-cyan/50 animate-pulse'
+                      : 'bg-gray-800/60 ring-pln-cyan/10'
+                }`}
+              >
+                <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-pln-cyan/80">
+                  <div
+                    className={`size-2.5 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`}
+                  />
+                  Loket {counter}
+                </div>
+
+                {isPaused ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="rounded-full border-2 border-red-500/50 px-6 py-1.5 text-base font-bold tracking-wider text-red-400">
+                      ISTIRAHAT
+                    </div>
+                    <div className="text-4xl font-bold tracking-tight text-gray-600">
+                      ---
+                    </div>
+                  </div>
+                ) : lastCalledList[idx] ? (
+                  <>
+                    <div className="text-5xl font-bold tracking-tight text-pln-cyan">
+                      {lastCalledList[idx]!.queueNumber}
+                    </div>
+                    <div className="mt-1 text-lg capitalize text-gray-300">
+                      {getServiceLabel(lastCalledList[idx]!.serviceType)}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-4xl font-bold tracking-tight text-gray-600">
+                    ---
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
+
+        {/* QueueBoard Compact */}
+        <div className="flex flex-[2] rounded-2xl bg-gray-800/60 p-4 ring-1 ring-pln-cyan/10 backdrop-blur">
+          <QueueBoard waitingList={waitingList} />
+        </div>
+      </div>
+
+      {/* Marquee */}
+      <div className="shrink-0 overflow-hidden border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-3">
+        <p className="animate-marquee whitespace-nowrap text-sm text-pln-cyan/60">
+          Terima kasih telah mengunjungi loket pelayanan PLN. Harap siapkan
+          dokumen yang diperlukan sebelum nomor antrian Anda dipanggil.
+          Gunakan aplikasi PLN Mobile untuk kemudahan transaksi dalam
+          genggaman Anda.
+        </p>
       </div>
     </div>
   )
