@@ -77,7 +77,7 @@ export default function Kiosk() {
 
       {error && (
         <div
-          className="mb-6 animate-in slide-in-from-top-2 fade-in rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="kiosk-error mb-6 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
           role="alert"
         >
           {error}

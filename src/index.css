@@ -202,3 +202,66 @@ dialog::backdrop {
 .animate-call-glow {
   animation: call-glow 2s ease-in-out infinite;
 }
+
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialog-content-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+[data-slot="dialog-overlay"][data-state="open"] {
+  animation: dialog-overlay-in 0.15s ease-out forwards;
+}
+
+[data-slot="dialog-overlay"][data-state="closed"] {
+  animation: dialog-overlay-out 0.12s ease-in forwards;
+}
+
+[data-slot="dialog-content"][data-state="open"] {
+  animation: dialog-content-in 0.15s ease-out forwards;
+}
+
+[data-slot="dialog-content"][data-state="closed"] {
+  animation: dialog-content-out 0.12s ease-in forwards;
+}
+
+@keyframes kiosk-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kiosk-error {
+  animation: kiosk-error-in 0.2s ease-out forwards;
+}

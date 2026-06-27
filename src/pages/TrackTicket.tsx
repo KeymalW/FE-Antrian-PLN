@@ -102,17 +102,19 @@ export default function TrackTicket() {
           <p className="mb-6 text-sm text-muted-foreground">
             {error || 'Tiket dengan ID tersebut tidak ada'}
           </p>
-          <div className="mb-6 rounded-lg bg-muted px-4 py-3 text-left text-sm">
-            <p className="mb-2 font-medium text-foreground">Coba demo tiket:</p>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/track/ticket-1" className="text-pln-cyan hover:underline">ticket-1 (menunggu)</Link>
-              <Link to="/track/ticket-2" className="text-pln-cyan hover:underline">ticket-2 (menunggu)</Link>
-              <Link to="/track/ticket-5" className="text-pln-cyan hover:underline">ticket-5 (dipanggil)</Link>
-              <Link to="/track/ticket-6" className="text-pln-cyan hover:underline">ticket-6 (dilayani)</Link>
-              <Link to="/track/ticket-7" className="text-pln-cyan hover:underline">ticket-7 (selesai)</Link>
-              <Link to="/track/ticket-8" className="text-pln-cyan hover:underline">ticket-8 (dilewati)</Link>
+          {import.meta.env.DEV && (
+            <div className="mb-6 rounded-lg bg-muted px-4 py-3 text-left text-sm">
+              <p className="mb-2 font-medium text-foreground">Coba demo tiket:</p>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/track/ticket-1" className="text-pln-cyan hover:underline">ticket-1 (menunggu)</Link>
+                <Link to="/track/ticket-2" className="text-pln-cyan hover:underline">ticket-2 (menunggu)</Link>
+                <Link to="/track/ticket-5" className="text-pln-cyan hover:underline">ticket-5 (dipanggil)</Link>
+                <Link to="/track/ticket-6" className="text-pln-cyan hover:underline">ticket-6 (dilayani)</Link>
+                <Link to="/track/ticket-7" className="text-pln-cyan hover:underline">ticket-7 (selesai)</Link>
+                <Link to="/track/ticket-8" className="text-pln-cyan hover:underline">ticket-8 (dilewati)</Link>
+              </div>
             </div>
-          </div>
+          )}
           <Link
             to="/kiosk"
             className="inline-flex items-center gap-2 text-sm text-pln-cyan hover:underline"

@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useAuthStore } from '../../store/authStore'
 import { Button } from '../ui/button'
 import { logout as logoutApi } from '../../services/auth'
@@ -16,7 +17,7 @@ export function Navbar() {
     try {
       await logoutApi()
     } catch {
-      // ignore
+      toast.error('Gagal logout dari server')
     }
     logout()
     navigate('/login')

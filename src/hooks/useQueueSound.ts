@@ -1,8 +1,6 @@
 import { useCallback, useRef } from 'react'
 import type { QueueTicket } from '../types/queue'
 
-const SOUND_URL = import.meta.env.VITE_SOUND_URL ?? '/sounds/call.mp3'
-
 let audioContext: AudioContext | null = null
 
 function getAudioContext() {
@@ -117,25 +115,44 @@ export function useQueueSound() {
     playingRef.current = true
 
     const ctx = getAudioContext()
-    const source = ctx.createBufferSource()
-    const gainNode = ctx.createGain()
+    const now = ctx.currentTime
 
-    fetch(SOUND_URL)
-      .then((res) => res.arrayBuffer())
-      .then((buffer) => ctx.decodeAudioData(buffer))
-      .then((audioBuffer) => {
-        source.buffer = audioBuffer
-        source.connect(gainNode)
-        gainNode.connect(ctx.destination)
-        gainNode.gain.value = 0.7
-        source.start(0)
-        source.onended = () => {
-          playingRef.current = false
-        }
-      })
-      .catch(() => {
-        playingRef.current = false
-      })
+    const master = ctx.createGain()
+    master.gain.value = 0.18
+    master.connect(ctx.destination)
+
+    const freq = 880
+    const osc = ctx.createOscillator()
+    const gate = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    gate.gain.setValueAtTime(0.0001, now)
+    gate.gain.exponentialRampToValueAtTime(0.8, now + 0.01)
+    gate.gain.setValueAtTime(0.8, now + 0.12)
+    gate.gain.exponentialRampToValueAtTime(0.0001, now + 0.25)
+
+    osc.connect(gate)
+    gate.connect(master)
+    osc.start(now)
+    osc.stop(now + 0.3)
+
+    // second pulse
+    const osc2 = ctx.createOscillator()
+    const gate2 = ctx.createGain()
+    osc2.type = 'sine'
+    osc2.frequency.value = freq * 1.5
+    gate2.gain.setValueAtTime(0.0001, now + 0.3)
+    gate2.gain.exponentialRampToValueAtTime(0.7, now + 0.31)
+    gate2.gain.setValueAtTime(0.7, now + 0.42)
+    gate2.gain.exponentialRampToValueAtTime(0.0001, now + 0.55)
+
+    osc2.connect(gate2)
+    gate2.connect(master)
+    osc2.start(now + 0.3)
+    osc2.stop(now + 0.6)
+
+    setTimeout(() => { playingRef.current = false }, 700)
   }, [])
 
   const playBeep = useCallback(() => {

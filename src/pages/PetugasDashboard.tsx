@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
+import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -18,6 +19,16 @@ import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Spinner } from '../components/ui/spinner'
 import { ScrollArea } from '../components/ui/scroll-area'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
 import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon } from 'lucide-react'
 import {
@@ -148,6 +159,7 @@ export default function PetugasDashboard() {
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
       console.error('Failed to fetch queue data')
+      toast.error('Gagal memuat data antrian')
     } finally {
       setLoading(false)
     }
@@ -200,6 +212,7 @@ export default function PetugasDashboard() {
       await fetchData()
     } catch {
       playBeep()
+      toast.error('Gagal memanggil antrian')
     } finally {
       setActionLoading(null)
     }
@@ -211,7 +224,7 @@ export default function PetugasDashboard() {
       await skipQueue(queueId)
       await fetchData()
     } catch {
-      // silent
+      toast.error('Gagal melewati antrian')
     } finally {
       setActionLoading(null)
     }
@@ -234,7 +247,7 @@ export default function PetugasDashboard() {
 
       await fetchData()
     } catch {
-      // silent
+      toast.error('Gagal menyelesaikan antrian')
     } finally {
       setActionLoading(null)
     }
@@ -252,7 +265,7 @@ export default function PetugasDashboard() {
       await clearQueueHistory()
       await fetchData()
     } catch {
-      // silent
+      toast.error('Gagal menghapus riwayat antrian')
     } finally {
       setActionLoading(null)
     }
@@ -459,20 +472,38 @@ export default function PetugasDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Antrian Selesai</CardTitle>
               {recentCompleted.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={handleClearHistory}
-                  disabled={actionLoading === 'clear-history'}
-                >
-                  {actionLoading === 'clear-history' ? (
-                    <Spinner className="size-4" />
-                  ) : (
-                    <Trash2Icon className="size-4" />
-                  )}
-                  <span className="ml-2 text-xs">Clear</span>
-                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2Icon className="size-4" />
+                      <span className="ml-2 text-xs">Clear</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Hapus Riwayat</DialogTitle>
+                      <DialogDescription>
+                        Apakah kamu yakin ingin menghapus semua riwayat antrian yang sudah selesai?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Batal</Button>
+                      </DialogClose>
+                      <Button
+                        variant="destructive"
+                        onClick={handleClearHistory}
+                        disabled={actionLoading === 'clear-history'}
+                      >
+                        {actionLoading === 'clear-history' ? 'Menghapus...' : 'Ya, Hapus'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
             </CardHeader>
             <CardContent>

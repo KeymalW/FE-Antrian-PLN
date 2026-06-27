@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { getTrashedTickets, restoreTicket, emptyTrash, clearQueueHistory } from '../services/queue'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -15,7 +16,7 @@ import {
   SettingsIcon,
 } from 'lucide-react'
 import { getServiceLabel } from '../lib/serviceTypes'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
 import type { QueueTicket } from '../types/queue'
 
 const TABS = [
@@ -59,7 +60,7 @@ function GeneralTab() {
     try {
       await clearQueueHistory()
     } catch {
-      /* silent */
+      toast.error('Gagal mereset antrian')
     } finally {
       setActionLoading(null)
     }
@@ -72,19 +73,34 @@ function GeneralTab() {
           <CardTitle>Pengaturan Umum</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={handleReset}
-            disabled={actionLoading === 'reset'}
-          >
-            {actionLoading === 'reset' ? (
-              <RefreshCwIcon className="mr-2 size-4 animate-spin" />
-            ) : (
-              <RotateCcwIcon className="mr-2 size-4" />
-            )}
-            Reset Semua Antrian
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="w-full">
+                <RotateCcwIcon className="mr-2 size-4" />
+                Reset Semua Antrian
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reset Semua Antrian</DialogTitle>
+                <DialogDescription>
+                  Apakah kamu yakin? Semua antrian yang sudah selesai atau dilewati akan dihapus.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Batal</Button>
+                </DialogClose>
+                <Button
+                  variant="destructive"
+                  onClick={handleReset}
+                  disabled={actionLoading === 'reset'}
+                >
+                  {actionLoading === 'reset' ? 'Mereset...' : 'Ya, Reset'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <p className="text-xs text-muted-foreground">
             Menghapus semua tiket yang sudah selesai atau dilewati dari sistem.
           </p>
@@ -108,6 +124,7 @@ function TrashTab() {
       setTickets(data)
     } catch {
       console.error('Failed to fetch trash')
+      toast.error('Gagal memuat tempat sampah')
     } finally {
       setLoading(false)
     }
@@ -124,7 +141,7 @@ function TrashTab() {
       await restoreTicket(ticketId)
       await fetchTrash()
     } catch {
-      /* silent */
+      toast.error('Gagal memulihkan tiket')
     } finally {
       setActionLoading(null)
     }
@@ -136,7 +153,7 @@ function TrashTab() {
       await emptyTrash()
       await fetchTrash()
     } catch {
-      /* silent */
+      toast.error('Gagal mengosongkan tempat sampah')
     } finally {
       setActionLoading(null)
     }

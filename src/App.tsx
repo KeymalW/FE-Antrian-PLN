@@ -11,6 +11,7 @@ import PetugasDashboard from './pages/PetugasDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
 import TrackTicket from './pages/TrackTicket'
+import NotFound from './pages/NotFound'
 
 const cards = [
   {
@@ -107,6 +108,7 @@ export default function App() {
         </Route>
         <Route path="/monitor" element={<MonitorTV />} />
         <Route path="/track/:id" element={<TrackTicket />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
     </Router>

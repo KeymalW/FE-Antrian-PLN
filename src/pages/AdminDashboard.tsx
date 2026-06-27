@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
+import { toast } from 'sonner'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import {
@@ -12,6 +13,16 @@ import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { ScrollArea } from '../components/ui/scroll-area'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
 import {
   ChevronDownIcon,
@@ -125,6 +136,7 @@ export default function AdminDashboard() {
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
       console.error('Failed to fetch data')
+      toast.error('Gagal memuat data dashboard')
     } finally {
       setLoading(false)
     }
@@ -149,7 +161,7 @@ export default function AdminDashboard() {
       await clearQueueHistory()
       await fetchData()
     } catch {
-      // silent
+      toast.error('Gagal menghapus riwayat antrian')
     } finally {
       setActionLoading(null)
     }
@@ -316,20 +328,38 @@ export default function AdminDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Riwayat Selesai</CardTitle>
               {recentCompleted.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={handleClearHistory}
-                  disabled={actionLoading === 'clear-history'}
-                >
-                  {actionLoading === 'clear-history' ? (
-                    <Skeleton className="size-4 rounded-full" />
-                  ) : (
-                    <Trash2Icon className="size-4" />
-                  )}
-                  <span className="ml-2 text-xs">Clear</span>
-                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2Icon className="size-4" />
+                      <span className="ml-2 text-xs">Clear</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Hapus Riwayat</DialogTitle>
+                      <DialogDescription>
+                        Apakah kamu yakin ingin menghapus semua riwayat antrian yang sudah selesai?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline">Batal</Button>
+                      </DialogClose>
+                      <Button
+                        variant="destructive"
+                        onClick={handleClearHistory}
+                        disabled={actionLoading === 'clear-history'}
+                      >
+                        {actionLoading === 'clear-history' ? 'Menghapus...' : 'Ya, Hapus'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
             </CardHeader>
             <CardContent>
@@ -372,15 +402,34 @@ export default function AdminDashboard() {
               <CardTitle>Pengaturan</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={handleClearHistory}
-                disabled={actionLoading === 'clear-history'}
-              >
-                <RotateCcwIcon className="mr-2 size-4" />
-                Reset Semua Antrian
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="secondary" className="w-full">
+                    <RotateCcwIcon className="mr-2 size-4" />
+                    Reset Semua Antrian
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Reset Semua Antrian</DialogTitle>
+                    <DialogDescription>
+                      Apakah kamu yakin? Semua antrian yang sedang berjalan akan dihapus.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">Batal</Button>
+                    </DialogClose>
+                    <Button
+                      variant="destructive"
+                      onClick={handleClearHistory}
+                      disabled={actionLoading === 'clear-history'}
+                    >
+                      {actionLoading === 'clear-history' ? 'Mereset...' : 'Ya, Reset'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </div>

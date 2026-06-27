@@ -56,7 +56,9 @@ export function useWebSocket(handlers?: {
         return
       }
 
-      const socket = new WebSocket(WS_URL)
+      const token = localStorage.getItem('token')
+      const url = token ? `${WS_URL}?token=${encodeURIComponent(token)}` : WS_URL
+      const socket = new WebSocket(url)
 
       socket.onopen = () => {
         if (cancelled) {
