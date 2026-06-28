@@ -30,7 +30,7 @@ import {
   DialogClose,
 } from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
-import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon } from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon, KeyboardIcon } from 'lucide-react'
 import {
   getServiceLabel,
   getServiceSortScore,
@@ -271,6 +271,57 @@ export default function PetugasDashboard() {
     }
   }
 
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      switch (e.key) {
+        case 'c':
+        case 'C':
+        case ' ':
+          e.preventDefault()
+          if (!isCounterPaused && !hasActiveTicket && queueList.length > 0) {
+            handleCall(queueList[0].id)
+          }
+          break
+        case 's':
+        case 'S':
+          e.preventDefault()
+          if (queueList.length > 0) {
+            handleSkip(queueList[0].id)
+          }
+          break
+        case 'Enter':
+          if (hasActiveTicket && lastCalled) {
+            e.preventDefault()
+            handleComplete(lastCalled.id)
+          }
+          break
+        case 'r':
+        case 'R':
+          if (hasActiveTicket) {
+            e.preventDefault()
+            handleRecall()
+          }
+          break
+        case 'i':
+        case 'I':
+          e.preventDefault()
+          setCounterStatus(counterNumber, !isCounterPaused)
+          break
+        case '?':
+          e.preventDefault()
+          setShowShortcutHelp((p) => !p)
+          break
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isCounterPaused, hasActiveTicket, queueList, lastCalled, counterNumber])
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -292,6 +343,14 @@ export default function PetugasDashboard() {
             onClick={() => setCounterStatus(counterNumber, !isCounterPaused)}
           >
             {isCounterPaused ? 'Aktifkan Loket' : 'Istirahat Loket'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setShowShortcutHelp(true)}
+            title="Pintasan Keyboard (?)"
+          >
+            <KeyboardIcon className="size-4" />
           </Button>
         </div>
       </div>
@@ -540,7 +599,7 @@ export default function PetugasDashboard() {
             <CardHeader>
               <CardTitle>Aksi Cepat</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <Button
                 variant="secondary"
                 className="w-full"
@@ -550,10 +609,46 @@ export default function PetugasDashboard() {
                 {loading && <Spinner data-icon="inline-start" />}
                 {loading ? 'Memuat...' : 'Refresh Data'}
               </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Tekan <kbd className="rounded border bg-muted px-1 font-mono text-[10px]">?</kbd> untuk pintasan keyboard
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Dialog open={showShortcutHelp} onOpenChange={setShowShortcutHelp}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pintasan Keyboard</DialogTitle>
+            <DialogDescription>
+              Tombol pintasan untuk mempercepat kerja di dashboard petugas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            {[
+              { key: 'C / Spasi', desc: 'Panggil antrian berikutnya' },
+              { key: 'S', desc: 'Skip / lewati antrian teratas' },
+              { key: 'Enter', desc: 'Selesaikan antrian yang sedang dilayani' },
+              { key: 'R', desc: 'Panggil ulang nomor terakhir' },
+              { key: 'I', desc: 'Aktifkan / Istirahatkan loket' },
+              { key: '?', desc: 'Tampilkan / sembunyikan bantuan ini' },
+            ].map(({ key, desc }) => (
+              <div key={key} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                <span className="text-muted-foreground">{desc}</span>
+                <kbd className="rounded border bg-background px-2 py-0.5 font-mono text-xs font-medium">
+                  {key}
+                </kbd>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Tutup</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

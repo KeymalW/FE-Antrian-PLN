@@ -13,6 +13,7 @@ import Login from './pages/Login'
 import TrackTicket from './pages/TrackTicket'
 import NotFound from './pages/NotFound'
 import { NetworkStatus } from './components/ui/NetworkStatus'
+import { PageTransition } from './components/layout/PageTransition'
 
 const cards = [
   {
@@ -85,9 +86,9 @@ export default function App() {
       <NetworkStatus />
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
+          <Route path="/kiosk" element={<PageTransition><Kiosk /></PageTransition>} />
+          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
           <Route
             path="/admin"
             element={
@@ -108,9 +109,9 @@ export default function App() {
             }
           />
         </Route>
-        <Route path="/monitor" element={<MonitorTV />} />
-        <Route path="/track/:id" element={<TrackTicket />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="/monitor" element={<PageTransition><MonitorTV /></PageTransition>} />
+        <Route path="/track/:id" element={<PageTransition><TrackTicket /></PageTransition>} />
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
       <Toaster />
     </Router>

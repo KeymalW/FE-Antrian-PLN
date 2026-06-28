@@ -31,8 +31,12 @@ import {
   Trash2Icon,
   RotateCcwIcon,
   RefreshCwIcon,
+  MonitorPlayIcon,
+  UploadIcon,
 } from 'lucide-react'
 import { getServiceLabel } from '../lib/serviceTypes'
+import type { VideoData } from '../services/settings'
+import { getMonitorVideos, uploadMonitorVideo, deleteMonitorVideo } from '../services/settings'
 import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
 
 const ServiceSummaryChart = lazy(() =>
@@ -164,6 +168,58 @@ export default function AdminDashboard() {
       toast.error('Gagal menghapus riwayat antrian')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const [videos, setVideos] = useState<VideoData[]>([])
+  const [videoLoading, setVideoLoading] = useState(true)
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const fetchVideos = useCallback(async () => {
+    setVideoLoading(true)
+    try {
+      const data = await getMonitorVideos()
+      setVideos(data)
+    } catch {
+      setVideos([])
+    } finally {
+      setVideoLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchVideos()
+  }, [fetchVideos])
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setVideoUploading(true)
+    try {
+      await uploadMonitorVideo(file)
+      await fetchVideos()
+      toast.success('Video berhasil diupload')
+    } catch {
+      toast.error('Gagal mengupload video')
+    } finally {
+      setVideoUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteVideo = async (filename: string) => {
+    setDeleting(filename)
+    try {
+      await deleteMonitorVideo(filename)
+      await fetchVideos()
+      toast.success('Video berhasil dihapus')
+    } catch {
+      toast.error('Gagal menghapus video')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -430,6 +486,78 @@ export default function AdminDashboard() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              <div className="mt-2 border-t pt-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <MonitorPlayIcon className="size-4 text-pln-cyan" />
+                  Video Monitor ({videos.length})
+                </div>
+
+                <div
+                  onClick={() => inputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 px-4 py-5 text-center text-sm text-muted-foreground transition-colors hover:border-pln-cyan/50 hover:text-pln-cyan"
+                >
+                  <UploadIcon className="size-7" />
+                  <span>Klik untuk upload video baru</span>
+                  <span className="text-[11px]">MP4, MOV, AVI, WMV, WEBM — maks 200MB</span>
+                </div>
+
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/webm"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {videoUploading && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-pln-cyan">
+                    <RefreshCwIcon className="size-4 animate-spin" />
+                    Mengupload...
+                  </div>
+                )}
+
+                {videoLoading ? (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCwIcon className="size-4 animate-spin" />
+                    Memuat daftar video...
+                  </div>
+                ) : videos.length === 0 ? (
+                  <p className="mt-3 text-center text-xs text-muted-foreground">Belum ada video</p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {videos.map((v) => (
+                      <div
+                        key={v.filename}
+                        className="overflow-hidden rounded-lg border bg-muted/30"
+                      >
+                        <video
+                          src={v.url}
+                          className="h-28 w-full bg-black object-cover"
+                          controls
+                        >
+                          Browser tidak mendukung video.
+                        </video>
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="truncate text-xs text-muted-foreground">{v.filename}</span>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteVideo(v.filename)}
+                            disabled={deleting === v.filename}
+                          >
+                            {deleting === v.filename ? (
+                              <RefreshCwIcon className="size-4 animate-spin" />
+                            ) : (
+                              <Trash2Icon className="size-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

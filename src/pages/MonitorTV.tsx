@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { MaximizeIcon, MinimizeIcon } from 'lucide-react'
 import { useQueueStore } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
 import { getQueueList, getLastCalled } from '../services/queue'
+import { getMonitorVideos } from '../services/settings'
 import { QueueBoard } from '../components/monitor/QueueBoard'
 import { VideoPlayer } from '../components/monitor/VideoPlayer'
 import { PLNLogo } from '../components/layout/PLNLogo'
@@ -26,6 +28,44 @@ export default function MonitorTV() {
   const pulseRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [justCalledCounter, setJustCalledCounter] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [videoUrls, setVideoUrls] = useState<string[]>([])
+  const [videoIndex, setVideoIndex] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
+  const currentSrc = videoUrls[videoIndex]
+
+  const handleVideoEnded = useCallback(() => {
+    setVideoIndex((prev) => (prev + 1) % videoUrls.length)
+  }, [videoUrls.length])
+
+  useEffect(() => {
+    getMonitorVideos()
+      .then((list) => {
+        setVideoUrls(list.map((v) => v.url))
+        setVideoIndex(0)
+      })
+      .catch(() => setVideoUrls([]))
+  }, [])
+
+  useEffect(() => {
+    if (videoIndex >= videoUrls.length && videoUrls.length > 0) {
+      setVideoIndex(0)
+    }
+  }, [videoUrls.length, videoIndex])
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -128,6 +168,13 @@ export default function MonitorTV() {
               refreshing ? 'opacity-100 bg-pln-cyan' : 'opacity-0'
             }`}
           />
+          <button
+            onClick={toggleFullscreen}
+            className="rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+            title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <MinimizeIcon className="size-5" /> : <MaximizeIcon className="size-5" />}
+          </button>
           <div className="text-right">
           <div className="text-2xl font-light tracking-wider">
             {time.toLocaleTimeString('id-ID', {
@@ -153,8 +200,10 @@ export default function MonitorTV() {
         {/* Video Player */}
         <div className="flex w-1/2">
           <VideoPlayer
-            youtubeIds={['v2Q_1n1il-4', 'd7jQzkWaqxg']}
+            src={currentSrc}
             className="w-full"
+            loop={videoUrls.length <= 1}
+            onEnded={handleVideoEnded}
           />
         </div>
 
