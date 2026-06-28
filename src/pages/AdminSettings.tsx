@@ -123,7 +123,7 @@ function TrashTab() {
       if (id !== fetchIdRef.current) return
       setTickets(data)
     } catch {
-      console.error('Failed to fetch trash')
+      if (import.meta.env.DEV) console.error('Failed to fetch trash')
       toast.error('Gagal memuat tempat sampah')
     } finally {
       setLoading(false)

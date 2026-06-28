@@ -158,7 +158,7 @@ export default function PetugasDashboard() {
       setRecentCompleted(sortRecentCompleted(completed))
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
-      console.error('Failed to fetch queue data')
+      if (import.meta.env.DEV) console.error('Failed to fetch queue data')
       toast.error('Gagal memuat data antrian')
     } finally {
       setLoading(false)

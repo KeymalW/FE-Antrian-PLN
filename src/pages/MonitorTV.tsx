@@ -25,6 +25,7 @@ export default function MonitorTV() {
   const fetchIdRef = useRef(0)
   const pulseRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [justCalledCounter, setJustCalledCounter] = useState<number | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -90,14 +91,21 @@ export default function MonitorTV() {
 
   useEffect(() => {
     let cancelled = false
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
     const load = async () => {
-      if (!cancelled) await fetchAll()
+      if (cancelled) return
+      setRefreshing(true)
+      await fetchAll()
+      if (cancelled) return
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => setRefreshing(false), 800)
     }
     load()
     const interval = setInterval(load, 30000)
     return () => {
       cancelled = true
       clearInterval(interval)
+      if (refreshTimer) clearTimeout(refreshTimer)
     }
   }, [fetchAll])
 
@@ -114,7 +122,13 @@ export default function MonitorTV() {
             <p className="text-sm text-white/60">PT Perusahaan Listrik Negara</p>
           </div>
         </div>
-        <div className="text-right">
+        <div className="flex items-center gap-3">
+          <span
+            className={`size-2 rounded-full transition-opacity duration-300 ${
+              refreshing ? 'opacity-100 bg-pln-cyan' : 'opacity-0'
+            }`}
+          />
+          <div className="text-right">
           <div className="text-2xl font-light tracking-wider">
             {time.toLocaleTimeString('id-ID', {
               hour: '2-digit',
@@ -130,6 +144,7 @@ export default function MonitorTV() {
               day: 'numeric',
             })}
           </div>
+        </div>
         </div>
       </div>
 

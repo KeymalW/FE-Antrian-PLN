@@ -135,7 +135,7 @@ export default function AdminDashboard() {
       setCounters([c1, c2, c3])
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
-      console.error('Failed to fetch data')
+      if (import.meta.env.DEV) console.error('Failed to fetch data')
       toast.error('Gagal memuat data dashboard')
     } finally {
       setLoading(false)

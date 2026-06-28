@@ -12,6 +12,7 @@ import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
 import TrackTicket from './pages/TrackTicket'
 import NotFound from './pages/NotFound'
+import { NetworkStatus } from './components/ui/NetworkStatus'
 
 const cards = [
   {
@@ -81,6 +82,7 @@ function HomePage() {
 export default function App() {
   return (
     <Router>
+      <NetworkStatus />
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
