@@ -1,5 +1,12 @@
 import { useCallback, useRef } from 'react'
 import type { QueueTicket } from '../types/queue'
+import { getServiceLabel } from '../lib/serviceTypes'
+
+export interface QueueSoundOptions {
+  ttsRate?: number
+  ttsPitch?: number
+  ttsVolume?: number
+}
 
 let audioContext: AudioContext | null = null
 
@@ -10,9 +17,13 @@ function getAudioContext() {
   return audioContext
 }
 
-export function useQueueSound() {
+export function useQueueSound(options?: QueueSoundOptions) {
   const playingRef = useRef(false)
   const announceTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  const ttsRate = options?.ttsRate ?? 0.92
+  const ttsPitch = options?.ttsPitch ?? 1
+  const ttsVolume = options?.ttsVolume ?? 1
 
   type AnnouncementStep =
     | { kind: 'bell'; delay: number }
@@ -31,9 +42,9 @@ export function useQueueSound() {
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'id-ID'
-    utterance.rate = 0.92
-    utterance.pitch = 1
-    utterance.volume = 1
+    utterance.rate = ttsRate
+    utterance.pitch = ttsPitch
+    utterance.volume = ttsVolume
 
     const voices = window.speechSynthesis.getVoices()
     const preferredVoice =
@@ -46,55 +57,77 @@ export function useQueueSound() {
     }
 
     window.speechSynthesis.speak(utterance)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsRate, ttsPitch, ttsVolume])
 
   const playBellChime = useCallback(() => {
-    const ctx = getAudioContext()
-    const master = ctx.createGain()
-    master.gain.value = 0.14
-    master.connect(ctx.destination)
+    try {
+      const ctx = getAudioContext()
+      if (ctx.state === 'suspended') return
 
-    const now = ctx.currentTime
-    const partials = [
-      { freq: 1040, gain: 0.85 },
-      { freq: 1560, gain: 0.55 },
-      { freq: 2080, gain: 0.32 },
-    ]
+      const master = ctx.createGain()
+      master.gain.value = 0.18
+      master.connect(ctx.destination)
 
-    partials.forEach(({ freq, gain }) => {
-      const osc = ctx.createOscillator()
-      const oscGain = ctx.createGain()
-      const filter = ctx.createBiquadFilter()
+      const now = ctx.currentTime
+      const partials = [
+        { freq: 660, gain: 0.35, decay: 2.5 },
+        { freq: 880, gain: 0.65, decay: 1.8 },
+        { freq: 1320, gain: 0.30, decay: 1.0 },
+        { freq: 1760, gain: 0.20, decay: 0.6 },
+        { freq: 2200, gain: 0.12, decay: 0.35 },
+        { freq: 3080, gain: 0.06, decay: 0.2 },
+      ]
 
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      filter.type = 'lowpass'
-      filter.frequency.value = 4200
+      partials.forEach(({ freq, gain, decay }) => {
+        const osc = ctx.createOscillator()
+        const gate = ctx.createGain()
+        const filter = ctx.createBiquadFilter()
 
-      oscGain.gain.setValueAtTime(0.0001, now)
-      oscGain.gain.exponentialRampToValueAtTime(gain, now + 0.02)
-      oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4)
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        filter.type = 'lowpass'
+        filter.frequency.value = Math.min(freq * 2.5, 8000)
 
-      osc.connect(filter)
-      filter.connect(oscGain)
-      oscGain.connect(master)
-      osc.start(now)
-      osc.stop(now + 1.5)
-    })
+        gate.gain.setValueAtTime(0.001, now)
+        gate.gain.exponentialRampToValueAtTime(gain, now + 0.006)
+        gate.gain.exponentialRampToValueAtTime(0.001, now + decay)
+
+        osc.connect(filter)
+        filter.connect(gate)
+        gate.connect(master)
+        osc.start(now)
+        osc.stop(now + decay + 0.05)
+      })
+    } catch {}
   }, [])
 
-  const announceQueueCall = useCallback((ticket: Pick<QueueTicket, 'queueNumber' | 'counterNumber'>) => {
+  const unlockAudio = useCallback(async () => {
+    const ctx = getAudioContext()
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {})
+    }
+
+    try {
+      const silent = new Audio()
+      silent.volume = 0.01
+      silent.play().catch(() => {})
+    } catch {}
+  }, [])
+
+  const announceQueueCall = useCallback((ticket: Pick<QueueTicket, 'queueNumber' | 'counterNumber' | 'serviceType'>) => {
     if (typeof window === 'undefined') return
 
-    const counter = ticket.counterNumber ?? 1
     clearAnnouncementQueue()
+
+    const label = getServiceLabel(ticket.serviceType)
 
     const sequence: AnnouncementStep[] = [
       { kind: 'bell', delay: 0 },
       { kind: 'speak', text: 'Nomor antrian', delay: 650 },
       { kind: 'speak', text: ticket.queueNumber, delay: 500 },
-      { kind: 'speak', text: 'dipanggil ke loket', delay: 500 },
-      { kind: 'speak', text: String(counter), delay: 450 },
+      { kind: 'speak', text: 'silakan menuju loket', delay: 500 },
+      { kind: 'speak', text: label, delay: 500 },
     ]
 
     sequence.forEach((item, index) => {
@@ -115,6 +148,7 @@ export function useQueueSound() {
     playingRef.current = true
 
     const ctx = getAudioContext()
+
     const now = ctx.currentTime
 
     const master = ctx.createGain()
@@ -137,7 +171,6 @@ export function useQueueSound() {
     osc.start(now)
     osc.stop(now + 0.3)
 
-    // second pulse
     const osc2 = ctx.createOscillator()
     const gate2 = ctx.createGain()
     osc2.type = 'sine'
@@ -157,6 +190,7 @@ export function useQueueSound() {
 
   const playBeep = useCallback(() => {
     const ctx = getAudioContext()
+
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
@@ -171,5 +205,5 @@ export function useQueueSound() {
     osc.stop(ctx.currentTime + 0.15)
   }, [])
 
-  return { playCallSound, playBeep, announceQueueCall, clearAnnouncementQueue }
+  return { playCallSound, playBeep, announceQueueCall, clearAnnouncementQueue, unlockAudio }
 }

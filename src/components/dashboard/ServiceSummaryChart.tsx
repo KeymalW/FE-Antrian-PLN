@@ -16,12 +16,13 @@ import {
   isWeeklyCounterChartEmpty,
   WEEKDAY_COLORS,
   WEEKDAY_LABELS,
-  type WeeklyCounterChartRow,
-  type WeeklyCounterKey,
+  type WeeklyServiceChartRow,
+  type WeeklyServiceKey,
 } from '../../lib/weeklyCounterChart'
+import { SERVICE_TYPE_ORDER } from '../../lib/serviceTypes'
 
 interface ServiceSummaryChartProps {
-  rows: WeeklyCounterChartRow[]
+  rows: WeeklyServiceChartRow[]
   embedded?: boolean
 }
 
@@ -34,15 +35,15 @@ function escapeCsv(value: string) {
   return value
 }
 
-function downloadCsv(rows: WeeklyCounterChartRow[]) {
-  const header = ['Hari', 'Loket 1', 'Loket 2', 'Loket 3', 'Total']
+function downloadCsv(rows: WeeklyServiceChartRow[]) {
+  const header = ['Hari', 'Pengaduan', 'PB/PD/Migrasi', 'P2TL', 'Total']
   const lines = [
     header.join(','),
     ...rows.map((row) => [
       row.label,
-      row.counter1,
-      row.counter2,
-      row.counter3,
+      row.pengaduan,
+      row.pb_pd_migrasi,
+      row.p2tl,
       row.total,
     ].map((value) => escapeCsv(String(value))).join(',')),
   ]
@@ -52,32 +53,32 @@ function downloadCsv(rows: WeeklyCounterChartRow[]) {
   const anchor = document.createElement('a')
 
   anchor.href = url
-  anchor.download = `diagram-loket-mingguan-${new Date().toISOString().slice(0, 10)}.csv`
+  anchor.download = `diagram-layanan-mingguan-${new Date().toISOString().slice(0, 10)}.csv`
   anchor.click()
 
   URL.revokeObjectURL(url)
 }
 
-async function downloadExcel(rows: WeeklyCounterChartRow[]) {
+async function downloadExcel(rows: WeeklyServiceChartRow[]) {
   const XLSX = await import('xlsx')
   const workbook = XLSX.utils.book_new()
   const sheetData = rows.map((row) => ({
     Hari: row.label,
-    'Loket 1': row.counter1,
-    'Loket 2': row.counter2,
-    'Loket 3': row.counter3,
+    Pengaduan: row.pengaduan,
+    'PB/PD/Migrasi': row.pb_pd_migrasi,
+    P2TL: row.p2tl,
     Total: row.total,
   }))
   const sheet = XLSX.utils.json_to_sheet(sheetData)
 
   XLSX.utils.book_append_sheet(workbook, sheet, 'Mingguan')
-  XLSX.writeFile(workbook, `diagram-loket-mingguan-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  XLSX.writeFile(workbook, `diagram-layanan-mingguan-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
 function CustomLegend() {
   return (
     <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-      {(['counter1', 'counter2', 'counter3'] as WeeklyCounterKey[]).map((key) => (
+      {SERVICE_TYPE_ORDER.map((key) => (
         <div key={key} className="flex items-center gap-2">
           <span
             className="size-3 rounded-sm"
@@ -109,7 +110,7 @@ function ChartTooltip({
       <div className="text-sm font-semibold text-foreground">{label}</div>
       <div className="mt-2 space-y-1.5">
         {payload.map((item) => {
-          const key = item.dataKey as WeeklyCounterKey
+          const key = item.dataKey as WeeklyServiceKey
           if (!key || !(key in WEEKDAY_LABELS)) return null
 
           return (
@@ -140,7 +141,7 @@ export function ServiceSummaryChart({ rows, embedded = false }: ServiceSummaryCh
 
   const content = empty ? (
     <div className="rounded-lg border border-dashed py-14 text-center text-sm text-muted-foreground">
-      Belum ada data loket minggu ini
+      Belum ada data layanan minggu ini
     </div>
   ) : (
     <div className="overflow-x-auto">
@@ -167,9 +168,15 @@ export function ServiceSummaryChart({ rows, embedded = false }: ServiceSummaryCh
             />
             <Tooltip content={<ChartTooltip />} />
             <Legend content={<CustomLegend />} verticalAlign="bottom" />
-            <Bar dataKey="counter1" name={WEEKDAY_LABELS.counter1} fill={WEEKDAY_COLORS.counter1} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="counter2" name={WEEKDAY_LABELS.counter2} fill={WEEKDAY_COLORS.counter2} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="counter3" name={WEEKDAY_LABELS.counter3} fill={WEEKDAY_COLORS.counter3} radius={[4, 4, 0, 0]} />
+            {SERVICE_TYPE_ORDER.map((key) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                name={WEEKDAY_LABELS[key]}
+                fill={WEEKDAY_COLORS[key]}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -214,10 +221,10 @@ export function ServiceSummaryChart({ rows, embedded = false }: ServiceSummaryCh
         <div>
           <CardTitle className="flex items-center gap-2">
             <BarChart3Icon className="size-5 text-pln-cyan" />
-            Perbandingan Loket Mingguan
+            Perbandingan Layanan Mingguan
           </CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Distribusi tiket per loket untuk hari kerja Senin sampai Jumat.
+            Distribusi tiket per layanan untuk hari kerja Senin sampai Jumat.
           </p>
         </div>
         {exportButtons}

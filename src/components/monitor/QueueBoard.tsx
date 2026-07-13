@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { QueueTicket } from '../../types/queue'
+import { getServiceLabel } from '../../lib/serviceTypes'
 
 interface QueueBoardProps {
   waitingList: QueueTicket[]
@@ -68,13 +69,13 @@ export function QueueBoard({ waitingList }: QueueBoardProps) {
                     {q.queueNumber}
                   </span>
                   <span
-                    className={`text-xs capitalize ${
+                    className={`text-xs ${
                       i === 0 && scrollIndex === 0
                         ? 'text-pln-cyan/90'
                         : 'text-gray-300'
                     }`}
                   >
-                    {q.serviceType}
+                    {getServiceLabel(q.serviceType).toUpperCase()}
                   </span>
                 </div>
               </div>

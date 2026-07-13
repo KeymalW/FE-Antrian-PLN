@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Film } from 'lucide-react'
 
 interface VideoPlayerProps {
@@ -6,10 +6,28 @@ interface VideoPlayerProps {
   className?: string
   loop?: boolean
   onEnded?: () => void
+  muted?: boolean
+  volume?: number
 }
 
-export function VideoPlayer({ src, className = '', loop = true, onEnded }: VideoPlayerProps) {
+export function VideoPlayer({ src, className = '', loop = true, onEnded, muted = true, volume = 0.2 }: VideoPlayerProps) {
   const [hasError, setHasError] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (muted) {
+      video.muted = true
+    } else {
+      video.muted = false
+      video.volume = volume
+      if (video.paused) {
+        video.play().catch(() => {})
+      }
+    }
+  }, [muted, volume])
 
   if (!src || hasError) {
     return (
@@ -32,11 +50,12 @@ export function VideoPlayer({ src, className = '', loop = true, onEnded }: Video
       className={`overflow-hidden rounded-2xl ring-1 ring-pln-cyan/20 shadow-[0_0_30px_rgba(20,162,186,0.15)] ${className}`}
     >
       <video
+        ref={videoRef}
         key={src}
         className="h-full w-full object-cover"
         src={src}
         autoPlay
-        muted
+        muted={muted}
         loop={loop}
         playsInline
         onError={() => setHasError(true)}

@@ -8,10 +8,9 @@ type TicketSeed = Omit<QueueTicket, 'createdAt' | 'calledAt' | 'completedAt'> & 
 }
 
 const servicePrefix: Record<ServiceType, string> = {
-  pembayaran: 'P',
   pengaduan: 'G',
-  pendaftaran: 'D',
-  informasi: 'I',
+  pb_pd_migrasi: 'M',
+  p2tl: 'T',
 }
 
 const mockUsers: Record<string, { user: User; password: string; token: string }> = {
@@ -129,15 +128,15 @@ function createWeeklyTicket(seed: {
 const mockTickets: QueueTicket[] = [
   createTicket({
     id: 'ticket-1',
-    queueNumber: 'P-001',
-    serviceType: 'pembayaran',
+    queueNumber: 'G-001',
+    serviceType: 'pengaduan',
     status: 'waiting',
     counterNumber: null,
     createdMinutesAgo: 45,
   }),
   createTicket({
     id: 'ticket-2',
-    queueNumber: 'G-001',
+    queueNumber: 'G-002',
     serviceType: 'pengaduan',
     status: 'waiting',
     counterNumber: null,
@@ -145,24 +144,24 @@ const mockTickets: QueueTicket[] = [
   }),
   createTicket({
     id: 'ticket-3',
-    queueNumber: 'D-001',
-    serviceType: 'pendaftaran',
+    queueNumber: 'M-001',
+    serviceType: 'pb_pd_migrasi',
     status: 'waiting',
     counterNumber: null,
     createdMinutesAgo: 31,
   }),
   createTicket({
     id: 'ticket-4',
-    queueNumber: 'I-001',
-    serviceType: 'informasi',
+    queueNumber: 'T-001',
+    serviceType: 'p2tl',
     status: 'waiting',
     counterNumber: null,
     createdMinutesAgo: 24,
   }),
   createTicket({
     id: 'ticket-5',
-    queueNumber: 'P-002',
-    serviceType: 'pembayaran',
+    queueNumber: 'G-003',
+    serviceType: 'pengaduan',
     status: 'called',
     counterNumber: 1,
     createdMinutesAgo: 22,
@@ -170,7 +169,7 @@ const mockTickets: QueueTicket[] = [
   }),
   createTicket({
     id: 'ticket-6',
-    queueNumber: 'G-002',
+    queueNumber: 'G-004',
     serviceType: 'pengaduan',
     status: 'serving',
     counterNumber: 2,
@@ -179,8 +178,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createTicket({
     id: 'ticket-7',
-    queueNumber: 'D-002',
-    serviceType: 'pendaftaran',
+    queueNumber: 'M-002',
+    serviceType: 'pb_pd_migrasi',
     status: 'completed',
     counterNumber: 3,
     createdMinutesAgo: 60,
@@ -189,8 +188,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createTicket({
     id: 'ticket-8',
-    queueNumber: 'I-002',
-    serviceType: 'informasi',
+    queueNumber: 'T-002',
+    serviceType: 'p2tl',
     status: 'skipped',
     counterNumber: null,
     createdMinutesAgo: 52,
@@ -198,8 +197,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-1',
-    queueNumber: 'P-101',
-    serviceType: 'pembayaran',
+    queueNumber: 'G-101',
+    serviceType: 'pengaduan',
     status: 'completed',
     counterNumber: 1,
     dayOffset: 0,
@@ -212,8 +211,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-2',
-    queueNumber: 'G-101',
-    serviceType: 'pengaduan',
+    queueNumber: 'M-101',
+    serviceType: 'pb_pd_migrasi',
     status: 'completed',
     counterNumber: 2,
     dayOffset: 0,
@@ -226,8 +225,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-3',
-    queueNumber: 'D-101',
-    serviceType: 'pendaftaran',
+    queueNumber: 'T-101',
+    serviceType: 'p2tl',
     status: 'serving',
     counterNumber: 3,
     dayOffset: 0,
@@ -238,8 +237,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-4',
-    queueNumber: 'P-102',
-    serviceType: 'pembayaran',
+    queueNumber: 'G-102',
+    serviceType: 'pengaduan',
     status: 'completed',
     counterNumber: 1,
     dayOffset: 1,
@@ -252,8 +251,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-5',
-    queueNumber: 'G-102',
-    serviceType: 'pengaduan',
+    queueNumber: 'M-102',
+    serviceType: 'pb_pd_migrasi',
     status: 'called',
     counterNumber: 2,
     dayOffset: 1,
@@ -264,8 +263,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-6',
-    queueNumber: 'I-101',
-    serviceType: 'informasi',
+    queueNumber: 'T-102',
+    serviceType: 'p2tl',
     status: 'completed',
     counterNumber: 3,
     dayOffset: 1,
@@ -278,8 +277,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-7',
-    queueNumber: 'D-102',
-    serviceType: 'pendaftaran',
+    queueNumber: 'G-103',
+    serviceType: 'pengaduan',
     status: 'completed',
     counterNumber: 1,
     dayOffset: 2,
@@ -292,8 +291,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-8',
-    queueNumber: 'P-103',
-    serviceType: 'pembayaran',
+    queueNumber: 'M-103',
+    serviceType: 'pb_pd_migrasi',
     status: 'serving',
     counterNumber: 2,
     dayOffset: 2,
@@ -304,8 +303,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-9',
-    queueNumber: 'G-103',
-    serviceType: 'pengaduan',
+    queueNumber: 'T-103',
+    serviceType: 'p2tl',
     status: 'completed',
     counterNumber: 3,
     dayOffset: 2,
@@ -318,8 +317,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-10',
-    queueNumber: 'P-104',
-    serviceType: 'pembayaran',
+    queueNumber: 'G-104',
+    serviceType: 'pengaduan',
     status: 'completed',
     counterNumber: 1,
     dayOffset: 3,
@@ -332,8 +331,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-11',
-    queueNumber: 'D-103',
-    serviceType: 'pendaftaran',
+    queueNumber: 'M-104',
+    serviceType: 'pb_pd_migrasi',
     status: 'called',
     counterNumber: 2,
     dayOffset: 3,
@@ -344,8 +343,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-12',
-    queueNumber: 'I-102',
-    serviceType: 'informasi',
+    queueNumber: 'T-104',
+    serviceType: 'p2tl',
     status: 'completed',
     counterNumber: 3,
     dayOffset: 3,
@@ -358,7 +357,7 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-13',
-    queueNumber: 'G-104',
+    queueNumber: 'G-105',
     serviceType: 'pengaduan',
     status: 'completed',
     counterNumber: 1,
@@ -372,8 +371,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-14',
-    queueNumber: 'P-105',
-    serviceType: 'pembayaran',
+    queueNumber: 'M-105',
+    serviceType: 'pb_pd_migrasi',
     status: 'serving',
     counterNumber: 2,
     dayOffset: 4,
@@ -384,8 +383,8 @@ const mockTickets: QueueTicket[] = [
   }),
   createWeeklyTicket({
     id: 'week-15',
-    queueNumber: 'D-104',
-    serviceType: 'pendaftaran',
+    queueNumber: 'T-105',
+    serviceType: 'p2tl',
     status: 'completed',
     counterNumber: 3,
     dayOffset: 4,
@@ -402,10 +401,9 @@ function getInitialState() {
   return {
     tickets: [...mockTickets],
     nextSequence: {
-      pembayaran: 3,
-      pengaduan: 3,
-      pendaftaran: 3,
-      informasi: 3,
+      pengaduan: 5,
+      pb_pd_migrasi: 3,
+      p2tl: 3,
     } satisfies Record<ServiceType, number>,
   }
 }

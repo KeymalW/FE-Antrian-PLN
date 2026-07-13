@@ -87,7 +87,6 @@ export default function App() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
-          <Route path="/kiosk" element={<PageTransition><Kiosk /></PageTransition>} />
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
           <Route
             path="/admin"
@@ -109,6 +108,7 @@ export default function App() {
             }
           />
         </Route>
+        <Route path="/kiosk" element={<PageTransition><Kiosk /></PageTransition>} />
         <Route path="/monitor" element={<PageTransition><MonitorTV /></PageTransition>} />
         <Route path="/track/:id" element={<PageTransition><TrackTicket /></PageTransition>} />
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />

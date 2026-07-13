@@ -1,9 +1,45 @@
 import api from './api'
-import { get, del } from './api'
+import { get, post, del } from './api'
 
 export interface VideoData {
   url: string
   filename: string
+}
+
+export interface VideoVolumeData {
+  volume: number
+}
+
+const VOLUME_LOCAL_KEY = 'monitor-video-volume'
+
+export function getLocalVideoVolume(): number {
+  try {
+    const stored = localStorage.getItem(VOLUME_LOCAL_KEY)
+    if (stored !== null) {
+      const v = Number(stored)
+      return v >= 0 && v <= 1 ? v : 0.2
+    }
+  } catch {}
+  return 0.2
+}
+
+export function setLocalVideoVolume(volume: number): void {
+  try {
+    localStorage.setItem(VOLUME_LOCAL_KEY, String(Math.max(0, Math.min(1, volume))))
+  } catch {}
+}
+
+export async function getServerVideoVolume(): Promise<number> {
+  try {
+    const res = await get<VideoVolumeData>('/settings/video-volume')
+    return res.data?.volume ?? 0.2
+  } catch {
+    return 0.2
+  }
+}
+
+export async function setServerVideoVolume(volume: number): Promise<void> {
+  await post('/settings/video-volume', { volume })
 }
 
 export async function getMonitorVideos(): Promise<VideoData[]> {

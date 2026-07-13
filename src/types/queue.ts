@@ -1,6 +1,6 @@
 export type QueueStatus = 'waiting' | 'called' | 'serving' | 'completed' | 'skipped'
 
-export type ServiceType = 'pembayaran' | 'pengaduan' | 'pendaftaran' | 'informasi'
+export type ServiceType = 'pengaduan' | 'pb_pd_migrasi' | 'p2tl'
 
 export interface QueueTicket {
   id: string

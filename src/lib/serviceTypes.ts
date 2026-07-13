@@ -1,17 +1,15 @@
 import type { QueueStatus, QueueTicket, ServiceType } from '../types/queue'
 
 export const SERVICE_TYPE_ORDER: ServiceType[] = [
-  'pembayaran',
   'pengaduan',
-  'pendaftaran',
-  'informasi',
+  'pb_pd_migrasi',
+  'p2tl',
 ]
 
 const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
-  pembayaran: 'Pembayaran',
   pengaduan: 'Pengaduan',
-  pendaftaran: 'Pendaftaran',
-  informasi: 'Informasi',
+  pb_pd_migrasi: 'PB/PD/Migrasi',
+  p2tl: 'P2TL',
 }
 
 function normalizeServiceKey(value: string) {

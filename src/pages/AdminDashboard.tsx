@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '../components/ui/dialog'
-import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
+import type { QueueTicket, QueueStats, QueueStatus, ServiceType } from '../types/queue'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -33,11 +33,12 @@ import {
   RefreshCwIcon,
   MonitorPlayIcon,
   UploadIcon,
+  Volume2Icon,
 } from 'lucide-react'
 import { getServiceLabel } from '../lib/serviceTypes'
 import type { VideoData } from '../services/settings'
-import { getMonitorVideos, uploadMonitorVideo, deleteMonitorVideo } from '../services/settings'
-import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
+import { getMonitorVideos, uploadMonitorVideo, deleteMonitorVideo, getServerVideoVolume, setServerVideoVolume } from '../services/settings'
+import { buildWeeklyCounterChartData, WEEKDAY_COLORS, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
 
 const ServiceSummaryChart = lazy(() =>
   import('../components/dashboard/ServiceSummaryChart').then((module) => ({
@@ -61,7 +62,11 @@ const statusColor: Record<QueueStatus, string> = {
   skipped: 'bg-gray-100 text-gray-600',
 }
 
-const COUNTERS = [1, 2, 3]
+const COUNTER_SERVICE_MAP: Record<number, ServiceType> = {
+  1: 'pengaduan',
+  2: 'pb_pd_migrasi',
+  3: 'p2tl',
+}
 
 function QueueStatusBadge({ status }: { status: QueueStatus }) {
   return <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
@@ -110,7 +115,7 @@ export default function AdminDashboard() {
   const [waitingQueue, setWaitingQueue] = useState<QueueTicket[]>([])
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
   const [counters, setCounters] = useState<(QueueTicket | null)[]>([null, null, null])
-  const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
+  const [serviceSummary, setServiceSummary] = useState<WeeklyServiceChartRow[]>([])
   const [showServiceSummary, setShowServiceSummary] = useState(false)
   const [now, setNow] = useState(new Date())
   const fetchIdRef = useRef(0)
@@ -175,6 +180,9 @@ export default function AdminDashboard() {
   const [videoLoading, setVideoLoading] = useState(true)
   const [videoUploading, setVideoUploading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [videoVolume, setVideoVolume] = useState(0.2)
+  const [volumeSaving, setVolumeSaving] = useState(false)
+  const [showVideoSection, setShowVideoSection] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const fetchVideos = useCallback(async () => {
@@ -191,6 +199,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchVideos()
+    getServerVideoVolume().then(setVideoVolume)
   }, [fetchVideos])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,14 +272,15 @@ export default function AdminDashboard() {
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {COUNTERS.map((num) => {
+            {Object.entries(COUNTER_SERVICE_MAP).map(([numStr, serviceType]) => {
+              const num = Number(numStr)
               const active = counters[num - 1]
               const isPaused = counterStatus[num] ?? false
               return (
-                <Card key={num}>
+                <Card key={num} className="border-t-4" style={{ borderTopColor: WEEKDAY_COLORS[serviceType] }}>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between text-sm">
-                      Loket #{num}
+                      {getServiceLabel(serviceType)}
                       {isPaused && (
                         <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/50 dark:text-red-400">
                           Istirahat
@@ -304,7 +314,7 @@ export default function AdminDashboard() {
             })}
           </div>
 
-          <Card className="mt-6">
+          <Card className="mt-6 border-t-4" style={{ borderTopColor: '#22d3ee' }}>
             <CardHeader>
               <CardTitle>Antrian Menunggu ({waitingQueue.length})</CardTitle>
             </CardHeader>
@@ -345,15 +355,15 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="mt-6 rounded-2xl shadow-sm">
+          <Card className="mt-6 rounded-2xl border-t-4 shadow-sm" style={{ borderTopColor: '#22d3ee' }}>
             <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3Icon className="size-5 text-pln-cyan" />
-                  Perbandingan Loket Mingguan
+                  Perbandingan Layanan Mingguan
                 </CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Distribusi tiket per loket untuk hari kerja Senin sampai Jumat.
+                  Distribusi tiket per layanan untuk hari kerja Senin sampai Jumat.
                 </p>
               </div>
               <Button
@@ -380,7 +390,7 @@ export default function AdminDashboard() {
         </div>
 
         <div>
-          <Card>
+          <Card className="border-t-4" style={{ borderTopColor: '#8B5CF6' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Riwayat Selesai</CardTitle>
               {recentCompleted.length > 0 && (
@@ -488,74 +498,126 @@ export default function AdminDashboard() {
               </Dialog>
 
               <div className="mt-2 border-t pt-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <MonitorPlayIcon className="size-4 text-pln-cyan" />
-                  Video Monitor ({videos.length})
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <MonitorPlayIcon className="size-4 text-pln-cyan" />
+                    Video Monitor ({videos.length})
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowVideoSection((prev) => !prev)}
+                  >
+                    {showVideoSection ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                    {showVideoSection ? 'Minimize' : 'Buka'}
+                  </Button>
                 </div>
 
-                <div
-                  onClick={() => inputRef.current?.click()}
-                  className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 px-4 py-5 text-center text-sm text-muted-foreground transition-colors hover:border-pln-cyan/50 hover:text-pln-cyan"
-                >
-                  <UploadIcon className="size-7" />
-                  <span>Klik untuk upload video baru</span>
-                  <span className="text-[11px]">MP4, MOV, AVI, WMV, WEBM — maks 200MB</span>
-                </div>
+                {showVideoSection && (
+                  <>
+                    <div
+                      onClick={() => inputRef.current?.click()}
+                      className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 px-4 py-5 text-center text-sm text-muted-foreground transition-colors hover:border-pln-cyan/50 hover:text-pln-cyan"
+                    >
+                      <UploadIcon className="size-7" />
+                      <span>Klik untuk upload video baru</span>
+                      <span className="text-[11px]">MP4, MOV, AVI, WMV, WEBM — maks 200MB</span>
+                    </div>
 
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/webm"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/webm"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
 
-                {videoUploading && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-pln-cyan">
-                    <RefreshCwIcon className="size-4 animate-spin" />
-                    Mengupload...
-                  </div>
-                )}
-
-                {videoLoading ? (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <RefreshCwIcon className="size-4 animate-spin" />
-                    Memuat daftar video...
-                  </div>
-                ) : videos.length === 0 ? (
-                  <p className="mt-3 text-center text-xs text-muted-foreground">Belum ada video</p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {videos.map((v) => (
-                      <div
-                        key={v.filename}
-                        className="overflow-hidden rounded-lg border bg-muted/30"
-                      >
-                        <video
-                          src={v.url}
-                          className="h-28 w-full bg-black object-cover"
-                          controls
-                        >
-                          Browser tidak mendukung video.
-                        </video>
-                        <div className="flex items-center justify-between px-3 py-2">
-                          <span className="truncate text-xs text-muted-foreground">{v.filename}</span>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDeleteVideo(v.filename)}
-                            disabled={deleting === v.filename}
-                          >
-                            {deleting === v.filename ? (
-                              <RefreshCwIcon className="size-4 animate-spin" />
-                            ) : (
-                              <Trash2Icon className="size-4" />
-                            )}
-                          </Button>
-                        </div>
+                    {videoUploading && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-pln-cyan">
+                        <RefreshCwIcon className="size-4 animate-spin" />
+                        Mengupload...
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    {videoLoading ? (
+                      <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                        <RefreshCwIcon className="size-4 animate-spin" />
+                        Memuat daftar video...
+                      </div>
+                    ) : videos.length === 0 ? (
+                      <p className="mt-3 text-center text-xs text-muted-foreground">Belum ada video</p>
+                    ) : (
+                      <div className="mt-3 max-h-[20rem] space-y-2 overflow-y-auto">
+                        {videos.map((v) => (
+                          <div
+                            key={v.filename}
+                            className="overflow-hidden rounded-lg border bg-muted/30"
+                          >
+                            <video
+                              src={v.url}
+                              className="h-28 w-full bg-black object-cover"
+                              controls
+                            >
+                              Browser tidak mendukung video.
+                            </video>
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="truncate text-xs text-muted-foreground">{v.filename}</span>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteVideo(v.filename)}
+                                disabled={deleting === v.filename}
+                              >
+                                {deleting === v.filename ? (
+                                  <RefreshCwIcon className="size-4 animate-spin" />
+                                ) : (
+                                  <Trash2Icon className="size-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-4 border-t pt-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <Volume2Icon className="size-4 text-pln-cyan" />
+                          Volume Video
+                        </div>
+                        <span className="text-sm tabular-nums text-muted-foreground">
+                          {Math.round(videoVolume * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={videoVolume}
+                        onChange={async (e) => {
+                          const v = Number(e.target.value)
+                          setVideoVolume(v)
+                          setVolumeSaving(true)
+                          try {
+                            await setServerVideoVolume(v)
+                          } catch {
+                            toast.error('Gagal menyimpan volume')
+                          } finally {
+                            setVolumeSaving(false)
+                          }
+                        }}
+                        className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-muted-foreground/20 accent-pln-cyan"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {videoVolume === 0
+                          ? 'Video akan senyap (mute)'
+                          : `Video akan diputar dengan volume ${Math.round(videoVolume * 100)}% — suara antrian tidak terganggu`}
+                        {volumeSaving && ' • Menyimpan...'}
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>

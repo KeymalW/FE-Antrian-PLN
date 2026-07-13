@@ -1,28 +1,29 @@
-import type { QueueTicket } from '../types/queue'
+import type { QueueTicket, ServiceType } from '../types/queue'
+import { SERVICE_TYPE_ORDER, getServiceLabel } from './serviceTypes'
 
-export type WeeklyCounterKey = 'counter1' | 'counter2' | 'counter3'
+export type WeeklyServiceKey = ServiceType
 
-export interface WeeklyCounterChartRow {
+export interface WeeklyServiceChartRow {
   day: string
   label: string
-  counter1: number
-  counter2: number
-  counter3: number
+  pengaduan: number
+  pb_pd_migrasi: number
+  p2tl: number
   total: number
 }
 
 export const WEEKDAY_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as const
 
-export const WEEKDAY_COLORS: Record<WeeklyCounterKey, string> = {
-  counter1: '#2563EB',
-  counter2: '#F59E0B',
-  counter3: '#16A34A',
+export const WEEKDAY_COLORS: Record<WeeklyServiceKey, string> = {
+  pengaduan: '#2563EB',
+  pb_pd_migrasi: '#F59E0B',
+  p2tl: '#16A34A',
 }
 
-export const WEEKDAY_LABELS: Record<WeeklyCounterKey, string> = {
-  counter1: 'Loket 1',
-  counter2: 'Loket 2',
-  counter3: 'Loket 3',
+export const WEEKDAY_LABELS: Record<WeeklyServiceKey, string> = {
+  pengaduan: getServiceLabel('pengaduan'),
+  pb_pd_migrasi: getServiceLabel('pb_pd_migrasi'),
+  p2tl: getServiceLabel('p2tl'),
 }
 
 function startOfMonday(date: Date) {
@@ -34,13 +35,6 @@ function startOfMonday(date: Date) {
   return result
 }
 
-function formatDateKey(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function formatWeekday(date: Date) {
   return date.toLocaleDateString('id-ID', { weekday: 'long' })
 }
@@ -50,7 +44,7 @@ function getChartTimestamp(ticket: Pick<QueueTicket, 'calledAt' | 'completedAt' 
 }
 
 export function buildWeeklyCounterChartData(
-  tickets: Pick<QueueTicket, 'counterNumber' | 'calledAt' | 'completedAt' | 'createdAt'>[],
+  tickets: Pick<QueueTicket, 'serviceType' | 'calledAt' | 'completedAt' | 'createdAt'>[],
 ) {
   const today = new Date()
   const monday = startOfMonday(today)
@@ -63,19 +57,19 @@ export function buildWeeklyCounterChartData(
     day.setDate(monday.getDate() + index)
 
     return {
-      day: formatDateKey(day),
+      day: day.toISOString().slice(0, 10),
       label,
-      counter1: 0,
-      counter2: 0,
-      counter3: 0,
+      pengaduan: 0,
+      pb_pd_migrasi: 0,
+      p2tl: 0,
       total: 0,
-    } satisfies WeeklyCounterChartRow
+    } satisfies WeeklyServiceChartRow
   })
 
   const rowMap = new Map(rows.map((row) => [row.day, row] as const))
 
   for (const ticket of tickets) {
-    if (!ticket.counterNumber || ticket.counterNumber < 1 || ticket.counterNumber > 3) continue
+    if (!ticket.serviceType || !SERVICE_TYPE_ORDER.includes(ticket.serviceType as ServiceType)) continue
 
     const ticketDate = new Date(getChartTimestamp(ticket))
     if (Number.isNaN(ticketDate.getTime())) continue
@@ -85,8 +79,8 @@ export function buildWeeklyCounterChartData(
     const row = rowMap.get(dayKey)
     if (!row) continue
 
-    const counterKey = `counter${ticket.counterNumber}` as WeeklyCounterKey
-    row[counterKey] += 1
+    const serviceKey = ticket.serviceType as WeeklyServiceKey
+    row[serviceKey] += 1
     row.total += 1
   }
 
@@ -96,6 +90,6 @@ export function buildWeeklyCounterChartData(
   }))
 }
 
-export function isWeeklyCounterChartEmpty(rows: WeeklyCounterChartRow[]) {
+export function isWeeklyCounterChartEmpty(rows: WeeklyServiceChartRow[]) {
   return rows.every((row) => row.total === 0)
 }
