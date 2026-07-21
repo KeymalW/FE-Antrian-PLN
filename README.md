@@ -1,6 +1,5 @@
 # FE Antrian PLN
 
-
 Sistem antrian digital PLN — kiosk ambil tiket, tracking real-time, monitor TV, dashboard petugas & admin.
 
 ## Fitur
@@ -25,29 +24,29 @@ npm run build
 
 ## Environment
 
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_PUBLIC_URL` | `http://localhost:5173` | URL untuk QR code |
-| `VITE_USE_MOCK_DATA` | `true` (otomatis) | Pakai mock backend |
+| Variable             | Default                 | Description        |
+| -------------------- | ----------------------- | ------------------ |
+| `VITE_PUBLIC_URL`    | `http://localhost:5173` | URL untuk QR code  |
+| `VITE_USE_MOCK_DATA` | `true` (otomatis)       | Pakai mock backend |
 
 ## Mock Credentials
 
-| Username | Password | Role | Counter |
-|---|---|---|---|
-| `admin` | `admin123` | admin | - |
+| Username   | Password     | Role    | Counter |
+| ---------- | ------------ | ------- | ------- |
+| `admin`    | `admin123`   | admin   | -       |
 | `petugas1` | `petugas123` | petugas | Loket 1 |
 | `petugas2` | `petugas123` | petugas | Loket 2 |
 | `petugas3` | `petugas123` | petugas | Loket 3 |
 
 ## Routes
 
-| Path | Halaman |
-|---|---|
-| `/` | Kiosk (ambil tiket) |
-| `/track/:id` | Track tiket |
-| `/monitor` | Monitor TV |
-| `/petugas` | Dashboard petugas |
-| `/admin` | Dashboard admin |
+| Path         | Halaman             |
+| ------------ | ------------------- |
+| `/`          | Kiosk (ambil tiket) |
+| `/track/:id` | Track tiket         |
+| `/monitor`   | Monitor TV          |
+| `/petugas`   | Dashboard petugas   |
+| `/admin`     | Dashboard admin     |
 
 ## Struktur
 
@@ -61,3 +60,5 @@ src/
 ├── lib/             # utilities
 └── types/           # TypeScript types
 ```
+
+warning
