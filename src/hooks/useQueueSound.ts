@@ -9,12 +9,29 @@ export interface QueueSoundOptions {
 }
 
 let audioContext: AudioContext | null = null
+let bellBuffer: AudioBuffer | null = null
+let bellLoading = false
 
 function getAudioContext() {
   if (!audioContext) {
     audioContext = new AudioContext()
   }
   return audioContext
+}
+
+async function preloadBell() {
+  if (bellBuffer || bellLoading) return
+  bellLoading = true
+  try {
+    const ctx = getAudioContext()
+    const res = await fetch('/sounds/melodic-bell.wav')
+    const arrayBuf = await res.arrayBuffer()
+    bellBuffer = await ctx.decodeAudioData(arrayBuf)
+  } catch {
+    bellBuffer = null
+  } finally {
+    bellLoading = false
+  }
 }
 
 export function useQueueSound(options?: QueueSoundOptions) {
@@ -65,40 +82,18 @@ export function useQueueSound(options?: QueueSoundOptions) {
       const ctx = getAudioContext()
       if (ctx.state === 'suspended') return
 
+      if (!bellBuffer) {
+        preloadBell()
+        return
+      }
+
+      const source = ctx.createBufferSource()
       const master = ctx.createGain()
-      master.gain.value = 0.18
+      master.gain.value = 0.5
+      source.buffer = bellBuffer
+      source.connect(master)
       master.connect(ctx.destination)
-
-      const now = ctx.currentTime
-      const partials = [
-        { freq: 660, gain: 0.35, decay: 2.5 },
-        { freq: 880, gain: 0.65, decay: 1.8 },
-        { freq: 1320, gain: 0.30, decay: 1.0 },
-        { freq: 1760, gain: 0.20, decay: 0.6 },
-        { freq: 2200, gain: 0.12, decay: 0.35 },
-        { freq: 3080, gain: 0.06, decay: 0.2 },
-      ]
-
-      partials.forEach(({ freq, gain, decay }) => {
-        const osc = ctx.createOscillator()
-        const gate = ctx.createGain()
-        const filter = ctx.createBiquadFilter()
-
-        osc.type = 'sine'
-        osc.frequency.value = freq
-        filter.type = 'lowpass'
-        filter.frequency.value = Math.min(freq * 2.5, 8000)
-
-        gate.gain.setValueAtTime(0.001, now)
-        gate.gain.exponentialRampToValueAtTime(gain, now + 0.006)
-        gate.gain.exponentialRampToValueAtTime(0.001, now + decay)
-
-        osc.connect(filter)
-        filter.connect(gate)
-        gate.connect(master)
-        osc.start(now)
-        osc.stop(now + decay + 0.05)
-      })
+      source.start(0)
     } catch {}
   }, [])
 
@@ -107,6 +102,8 @@ export function useQueueSound(options?: QueueSoundOptions) {
     if (ctx.state === 'suspended') {
       await ctx.resume().catch(() => {})
     }
+
+    preloadBell()
 
     try {
       const silent = new Audio()
@@ -205,5 +202,5 @@ export function useQueueSound(options?: QueueSoundOptions) {
     osc.stop(ctx.currentTime + 0.15)
   }, [])
 
-  return { playCallSound, playBeep, announceQueueCall, clearAnnouncementQueue, unlockAudio }
+  return { playBeep, announceQueueCall, unlockAudio }
 }
