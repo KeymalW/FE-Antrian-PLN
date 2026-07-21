@@ -108,6 +108,14 @@ export const SERVICE_STATUS_LABELS: Record<QueueStatus, string> = {
   skipped: 'Dilewati',
 }
 
+export const STATUS_BADGE_COLOR: Record<QueueStatus, string> = {
+  waiting: 'bg-yellow-100 text-yellow-800',
+  called: 'bg-blue-100 text-blue-800',
+  serving: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  skipped: 'bg-gray-100 text-gray-600',
+}
+
 export const SERVICE_STATUS_COLORS: Record<QueueStatus, string> = {
   waiting: '#9CA3AF',
   called: '#2563EB',

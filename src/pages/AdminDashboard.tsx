@@ -35,7 +35,7 @@ import {
   UploadIcon,
   Volume2Icon,
 } from 'lucide-react'
-import { getServiceLabel } from '../lib/serviceTypes'
+import { getServiceLabel, SERVICE_STATUS_LABELS, STATUS_BADGE_COLOR } from '../lib/serviceTypes'
 import type { VideoData } from '../services/settings'
 import { getMonitorVideos, uploadMonitorVideo, deleteMonitorVideo, getServerVideoVolume, setServerVideoVolume } from '../services/settings'
 import { buildWeeklyCounterChartData, WEEKDAY_COLORS, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
@@ -46,22 +46,6 @@ const ServiceSummaryChart = lazy(() =>
   })),
 )
 
-const statusLabel: Record<QueueStatus, string> = {
-  waiting: 'Menunggu',
-  called: 'Dipanggil',
-  serving: 'Dilayani',
-  completed: 'Selesai',
-  skipped: 'Dilewati',
-}
-
-const statusColor: Record<QueueStatus, string> = {
-  waiting: 'bg-yellow-100 text-yellow-800',
-  called: 'bg-blue-100 text-blue-800',
-  serving: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  skipped: 'bg-gray-100 text-gray-600',
-}
-
 const COUNTER_SERVICE_MAP: Record<number, ServiceType> = {
   1: 'pengaduan',
   2: 'pb_pd_migrasi',
@@ -69,7 +53,7 @@ const COUNTER_SERVICE_MAP: Record<number, ServiceType> = {
 }
 
 function QueueStatusBadge({ status }: { status: QueueStatus }) {
-  return <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
+  return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
 }
 
 function CardSkeleton() {
@@ -282,7 +266,7 @@ export default function AdminDashboard() {
                     <CardTitle className="flex items-center justify-between text-sm">
                       {getServiceLabel(serviceType)}
                       {isPaused && (
-                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/50 dark:text-red-400">
+                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                           Istirahat
                         </span>
                       )}

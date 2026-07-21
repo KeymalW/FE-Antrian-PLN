@@ -12,6 +12,15 @@ import {
 } from '../mocks/mockBackend'
 import type { QueueTicket, QueueStats, CallRequest, ServiceType } from '../types/queue'
 
+export async function getWeeklyQueueList(): Promise<QueueTicket[]> {
+  if (USE_MOCK_DATA) {
+    return mockGetQueueList({ perPage: 1000 })
+  }
+
+  const res = await get<QueueTicket[]>('/queue/weekly')
+  return res.data
+}
+
 export async function getQueueList(params?: {
   status?: string
   serviceType?: string

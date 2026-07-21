@@ -7,6 +7,7 @@ import { useQueueSound } from '../hooks/useQueueSound'
 import {
   getQueueList,
   getQueueStats,
+  getWeeklyQueueList,
   callQueue,
   skipQueue,
   completeQueue,
@@ -30,10 +31,12 @@ import {
   DialogClose,
 } from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
-import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon, KeyboardIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon, KeyboardIcon, VolumeIcon } from 'lucide-react'
 import {
   getServiceLabel,
   getServiceSortScore,
+  SERVICE_STATUS_LABELS,
+  STATUS_BADGE_COLOR,
 } from '../lib/serviceTypes'
 import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
 
@@ -43,24 +46,8 @@ const ServiceSummaryChart = lazy(() =>
   })),
 )
 
-const statusLabel: Record<QueueStatus, string> = {
-  waiting: 'Menunggu',
-  called: 'Dipanggil',
-  serving: 'Dilayani',
-  completed: 'Selesai',
-  skipped: 'Dilewati',
-}
-
-const statusColor: Record<QueueStatus, string> = {
-  waiting: 'bg-yellow-100 text-yellow-800',
-  called: 'bg-blue-100 text-blue-800',
-  serving: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  skipped: 'bg-gray-100 text-gray-600',
-}
-
 function QueueStatusBadge({ status }: { status: QueueStatus }) {
-  return <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
+  return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
 }
 
 function CardSkeleton() {
@@ -123,7 +110,7 @@ function sortWaitingTickets(tickets: QueueTicket[]) {
 export default function PetugasDashboard() {
   const { user } = useAuthStore()
   const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled, counterStatus, setCounterStatus } = useQueueStore()
-  const { playCallSound, playBeep, announceQueueCall } = useQueueSound()
+  const { playBeep, unlockAudio, announceQueueCall } = useQueueSound()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
@@ -149,7 +136,7 @@ export default function PetugasDashboard() {
         getQueueStats(),
         getLastCalled(counterNumber),
         getQueueList({ status: 'completed', perPage: 10 }),
-        getQueueList({ perPage: 1000 }),
+        getWeeklyQueueList(),
       ])
       if (id !== fetchIdRef.current) return
       setQueueList(sortWaitingTickets(list))
@@ -173,7 +160,6 @@ export default function PetugasDashboard() {
       const payload = msg.payload as QueueTicket
       if (payload.counterNumber === counterNumber) {
         setLastCalled(payload)
-        playCallSound()
         announceQueueCall(payload)
       }
       fetchData()
@@ -207,7 +193,6 @@ export default function PetugasDashboard() {
     try {
       const result = await callQueue({ queueId, counterNumber })
       setLastCalled(result)
-      playCallSound()
       announceQueueCall(result)
       await fetchData()
     } catch {
@@ -234,17 +219,7 @@ export default function PetugasDashboard() {
     setActionLoading(queueId)
     try {
       await completeQueue(queueId)
-
-      if (!isCounterPaused) {
-        const state = useQueueStore.getState()
-        const nextTicket = state.queueList[0]
-        if (nextTicket) {
-          const result = await callQueue({ queueId: nextTicket.id, counterNumber })
-          playCallSound()
-          announceQueueCall(result)
-        }
-      }
-
+      setLastCalled(null)
       await fetchData()
     } catch {
       toast.error('Gagal menyelesaikan antrian')
@@ -255,7 +230,6 @@ export default function PetugasDashboard() {
 
   const handleRecall = () => {
     if (!lastCalled) return
-    playCallSound()
     announceQueueCall(lastCalled)
   }
 
@@ -272,6 +246,12 @@ export default function PetugasDashboard() {
   }
 
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
+
+  const handleUnlockAudio = async () => {
+    await unlockAudio()
+    setAudioUnlocked(true)
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -284,6 +264,7 @@ export default function PetugasDashboard() {
         case ' ':
           e.preventDefault()
           if (!isCounterPaused && !hasActiveTicket && queueList.length > 0) {
+            unlockAudio()
             handleCall(queueList[0].id)
           }
           break
@@ -297,6 +278,7 @@ export default function PetugasDashboard() {
         case 'Enter':
           if (hasActiveTicket && lastCalled) {
             e.preventDefault()
+            unlockAudio()
             handleComplete(lastCalled.id)
           }
           break
@@ -304,6 +286,7 @@ export default function PetugasDashboard() {
         case 'R':
           if (hasActiveTicket) {
             e.preventDefault()
+            unlockAudio()
             handleRecall()
           }
           break
@@ -324,6 +307,28 @@ export default function PetugasDashboard() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
+      {/* Audio Unlock Overlay */}
+      {!audioUnlocked && (
+        <div
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={handleUnlockAudio}
+        >
+          <div className="flex flex-col items-center gap-6 rounded-2xl bg-white px-12 py-10 shadow-2xl">
+            <div className="rounded-full bg-pln-cyan/20 p-5">
+              <VolumeIcon className="size-12 text-pln-cyan" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900">Aktifkan Suara</h2>
+              <p className="mt-2 text-base text-gray-500">
+                Klik di mana saja untuk mengaktifkan suara antrian
+              </p>
+            </div>
+            <div className="animate-pulse text-sm text-gray-400">
+              Ketuk layar untuk melanjutkan
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard Petugas</h1>
@@ -426,7 +431,7 @@ export default function PetugasDashboard() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+                          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
                           onClick={() => handleSkip(q.id)}
                         >
                           Skip
@@ -512,7 +517,7 @@ export default function PetugasDashboard() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+                      className="bg-gray-100 text-gray-800 hover:bg-gray-200"
                       onClick={() => handleSkip(lastCalled.id)}
                     >
                       Skip

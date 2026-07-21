@@ -4,7 +4,6 @@ import { getServiceLabel } from '../../lib/serviceTypes'
 
 interface QueueBoardProps {
   waitingList: QueueTicket[]
-  lastCalled?: QueueTicket | null
 }
 
 const VISIBLE_ITEMS = 5

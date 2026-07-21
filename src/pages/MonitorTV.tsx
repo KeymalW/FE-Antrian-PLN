@@ -21,7 +21,7 @@ const COUNTER_TO_SERVICE: Record<number, ServiceType> = {
 
 export default function MonitorTV() {
   const { setQueueList, counterStatus } = useQueueStore()
-  const { announceQueueCall, unlockAudio } = useQueueSound({
+  const { unlockAudio } = useQueueSound({
     ttsRate: 0.92,
     ttsPitch: 1,
     ttsVolume: 1,
@@ -47,6 +47,15 @@ export default function MonitorTV() {
     document.addEventListener('fullscreenchange', handler)
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio()
+      document.removeEventListener('pointerdown', unlock)
+    }
+    document.addEventListener('pointerdown', unlock)
+    return () => document.removeEventListener('pointerdown', unlock)
+  }, [unlockAudio])
 
   const toggleFullscreen = async () => {
     await unlockAudio()
@@ -75,9 +84,6 @@ export default function MonitorTV() {
       setVideoVolume(v)
       setLocalVideoVolume(v)
     })
-
-    unlockAudio()
-    document.addEventListener('pointerdown', unlockAudio, { once: true })
   }, [])
 
   useEffect(() => {
@@ -137,7 +143,6 @@ export default function MonitorTV() {
         setJustCalledServiceType(null)
       }, 6000)
 
-      announceQueueCall(payload)
       fetchAll()
     },
     onQueueUpdate: () => { fetchAll() },
@@ -185,7 +190,7 @@ export default function MonitorTV() {
             }`}
           />
           <button
-            onClick={() => { unlockAudio().then(() => setVideoMuted((prev) => !prev)) }}
+            onClick={() => { unlockAudio().then(() => { setVideoMuted((prev) => !prev) }) }}
             className="rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
             title={videoMuted ? 'Aktifkan suara video' : 'Matikan suara video'}
           >
@@ -304,7 +309,7 @@ export default function MonitorTV() {
             const isPaused = counter ? (counterStatus[Number(counter)] ?? false) : false
             const ticket = lastCalledByType[serviceType]
             const isPulsing = justCalledServiceType === serviceType
-            return (
+              return (
               <div
                 key={serviceType}
                 className={`flex flex-1 flex-col items-center justify-center rounded-2xl p-4 ring-1 backdrop-blur transition-all duration-500 ${

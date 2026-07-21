@@ -149,7 +149,7 @@ export default function Kiosk() {
                     key={svc.type}
                     onClick={() => handleTakeTicket(svc.type)}
                     disabled={loading}
-                    className="group/btn cursor-pointer rounded-2xl bg-pln-teal/80 p-8 text-center shadow-lg shadow-pln-teal/30 transition-all duration-300 hover:scale-[1.03] hover:bg-pln-teal hover:shadow-xl hover:shadow-pln-teal/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group/btn relative cursor-pointer rounded-2xl bg-pln-teal/80 p-8 text-center before:absolute before:inset-0 before:-z-10 before:translate-x-3 before:translate-y-3 before:rounded-2xl before:bg-black/25 before:content-[''] hover:scale-[1.03] hover:bg-pln-teal disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-white/20 transition-colors group-hover/btn:bg-white/30">
                       <Icon className="size-8 text-white" />
@@ -183,7 +183,7 @@ export default function Kiosk() {
                     key={svc.type}
                     onClick={() => handleTakeTicket(svc.type)}
                     disabled={loading}
-                    className="group/btn w-full cursor-pointer rounded-2xl bg-pln-teal/80 p-8 text-center shadow-lg shadow-pln-teal/30 transition-all duration-300 hover:scale-[1.03] hover:bg-pln-teal hover:shadow-xl hover:shadow-pln-teal/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group/btn relative w-full cursor-pointer rounded-2xl bg-pln-teal/80 p-8 text-center before:absolute before:inset-0 before:-z-10 before:translate-x-3 before:translate-y-3 before:rounded-2xl before:bg-black/25 before:content-[''] hover:scale-[1.03] hover:bg-pln-teal disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-white/20 transition-colors group-hover/btn:bg-white/30">
                       <Icon className="size-8 text-white" />

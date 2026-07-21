@@ -74,7 +74,7 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 2. **Auto-call** — `handleComplete` di PetugasDashboard otomatis panggil tiket berikutnya dari antrian (`useQueueStore.getState().queueList[0]`) setelah selesai. Skip tetep manual. Cuma 1x fetchData di akhir (gak dobel).
 3. **Counter pause blocks call** — Tombol Panggil di-disable kalo `isCounterPaused`, dengan notice kuning. Juga di-disable kalo `hasActiveTicket`.
 4. **Print layout** — Hidden div di TrackTicket dengan class `hidden print:block`. QR code + info tiket cuma muncul pas `window.print()`.
-5. **QR code** — Encode full URL ke `/track/:id`, bukan JSON. URL dari `VITE_PUBLIC_URL` env.
+5. **QR code** — Encode full URL ke `/track/:id`, bukan JSON. URL dari `window.location.origin` (fallback otomatis).
 6. **Auto-redirect kiosk** — Setelah ambil tiket, redirect ke `/track/:id` (bukan inline success view).
 7. **Monitor TV** — Background dark, grid 3 kolom counter (atau 1 kolom di mobile). Counter card jadi merah saat ISTIRAHAT.
 8. **Demo ticket links** — Di TrackTicket, kalo tiket gak ditemukan, tampilin link demo untuk tiket sample (ticket-1 sampai ticket-8).
@@ -94,7 +94,6 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 | `VITE_WS_URL` | `ws://localhost:3001/ws` | hooks/useWebSocket.ts |
 | `VITE_USE_MOCK_DATA` | `'true'` (kalo bukan `'false'`) | mocks/mockMode.ts |
 | `VITE_SOUND_URL` | `/sounds/call.mp3` | hooks/useQueueSound.ts |
-| `VITE_PUBLIC_URL` | `window.location.origin` | pages/TrackTicket.tsx |
 
 ## Recent Bug Fixes
 
@@ -123,10 +122,6 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 
 ## Known Issues / Next Steps
 
-- **next-themes** terinstall tapi **gak dipake** — gak ada ThemeProvider, gak ada dark mode toggle. Semua `.dark:` selector di shadcn components gak aktif.
-- **Banyak UI components gak kepake** — Dialog, Select, Input, Label, Table, Sonner ada di `components/ui/` tapi mostly unused.
-- **Sound file mungkin ilang** — `/sounds/call.mp3` perlu dicek kalo pake mode real.
-- **VITE_PUBLIC_URL di-commit** — IP `192.168.50.90` hardcoded di `.env`, perlu disesuaikan tiap jaringan beda.
 
 ## Tech Stack
 
