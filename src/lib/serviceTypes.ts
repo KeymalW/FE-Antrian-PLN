@@ -1,10 +1,27 @@
-import type { QueueStatus, QueueTicket, ServiceType } from '../types/queue'
+import type { QueueStatus, ServiceType } from '../types/queue'
 
 export const SERVICE_TYPE_ORDER: ServiceType[] = [
   'pengaduan',
   'pb_pd_migrasi',
   'p2tl',
 ]
+
+export type ServiceGroup = 'group_a' | 'group_b'
+
+const SERVICE_GROUP_MAP: Record<ServiceType, ServiceGroup> = {
+  pengaduan: 'group_a',
+  pb_pd_migrasi: 'group_a',
+  p2tl: 'group_b',
+}
+
+export const SERVICE_GROUP_LABELS: Record<ServiceGroup, string> = {
+  group_a: 'Pengaduan & PB/PD/Migrasi',
+  group_b: 'P2TL',
+}
+
+export function getServiceGroup(serviceType: ServiceType): ServiceGroup {
+  return SERVICE_GROUP_MAP[serviceType] ?? 'group_a'
+}
 
 const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   pengaduan: 'Pengaduan',
@@ -47,59 +64,6 @@ export function getServiceSortScore(serviceType: string) {
   return { group: 1, order: 0, label: getServiceLabel(serviceType) }
 }
 
-export interface ServiceSummaryRow {
-  serviceType: string
-  label: string
-  total: number
-  waiting: number
-  called: number
-  serving: number
-  completed: number
-  skipped: number
-}
-
-export function buildServiceSummary(tickets: Pick<QueueTicket, 'serviceType' | 'status'>[]) {
-  const summary = new Map<string, ServiceSummaryRow>()
-
-  for (const ticket of tickets) {
-    const serviceType = normalizeServiceKey(ticket.serviceType)
-    const current = summary.get(serviceType) ?? {
-      serviceType,
-      label: getServiceLabel(serviceType),
-      total: 0,
-      waiting: 0,
-      called: 0,
-      serving: 0,
-      completed: 0,
-      skipped: 0,
-    }
-
-    current.total += 1
-    current[ticket.status as QueueStatus] += 1
-    summary.set(serviceType, current)
-  }
-
-  return [...summary.values()].sort((a, b) => {
-    const aScore = getServiceSortScore(a.serviceType)
-    const bScore = getServiceSortScore(b.serviceType)
-
-    if (aScore.group !== bScore.group) return aScore.group - bScore.group
-    if (aScore.group === 0 && aScore.order !== bScore.order) {
-      return aScore.order - bScore.order
-    }
-
-    return aScore.label.localeCompare(bScore.label, 'id')
-  })
-}
-
-export const SERVICE_STATUS_ORDER: QueueStatus[] = [
-  'waiting',
-  'called',
-  'serving',
-  'completed',
-  'skipped',
-]
-
 export const SERVICE_STATUS_LABELS: Record<QueueStatus, string> = {
   waiting: 'Menunggu',
   called: 'Dipanggil',
@@ -116,55 +80,4 @@ export const STATUS_BADGE_COLOR: Record<QueueStatus, string> = {
   skipped: 'bg-gray-100 text-gray-600',
 }
 
-export const SERVICE_STATUS_COLORS: Record<QueueStatus, string> = {
-  waiting: '#9CA3AF',
-  called: '#2563EB',
-  serving: '#F59E0B',
-  completed: '#16A34A',
-  skipped: '#DC2626',
-}
 
-export interface ServiceChartRow {
-  serviceType: ServiceType
-  label: string
-  waiting: number
-  called: number
-  serving: number
-  completed: number
-  skipped: number
-  total: number
-}
-
-export function buildServiceChartData(tickets: Pick<QueueTicket, 'serviceType' | 'status'>[]) {
-  const rows = new Map<ServiceType, ServiceChartRow>(
-    SERVICE_TYPE_ORDER.map((serviceType) => [
-      serviceType,
-      {
-        serviceType,
-        label: getServiceLabel(serviceType),
-        waiting: 0,
-        called: 0,
-        serving: 0,
-        completed: 0,
-        skipped: 0,
-        total: 0,
-      },
-    ]),
-  )
-
-  for (const ticket of tickets) {
-    const serviceType = normalizeServiceKey(ticket.serviceType) as ServiceType
-    const row = rows.get(serviceType)
-
-    if (!row) continue
-
-    row[ticket.status] += 1
-    row.total += 1
-  }
-
-  return SERVICE_TYPE_ORDER.map((serviceType) => rows.get(serviceType)!)
-}
-
-export function isServiceChartEmpty(rows: ServiceChartRow[]) {
-  return rows.every((row) => row.total === 0)
-}

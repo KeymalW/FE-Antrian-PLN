@@ -5,6 +5,7 @@ export interface EstimatedWait {
   estimatedMinutes: number
   queuePosition: number
   totalAhead: number
+  waitingCount: number
 }
 
 function calculateDurationMinutes(start: string, end: string): number {
@@ -49,5 +50,6 @@ export async function getEstimatedWaitTime(serviceType: ServiceType): Promise<Es
     estimatedMinutes,
     queuePosition: sameCount + 1,
     totalAhead,
+    waitingCount: sameCount,
   }
 }

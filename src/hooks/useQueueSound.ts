@@ -35,7 +35,6 @@ async function preloadBell() {
 }
 
 export function useQueueSound(options?: QueueSoundOptions) {
-  const playingRef = useRef(false)
   const announceTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const ttsRate = options?.ttsRate ?? 0.92
@@ -139,51 +138,6 @@ export function useQueueSound(options?: QueueSoundOptions) {
       announceTimersRef.current.push(timer)
     })
   }, [clearAnnouncementQueue, playBellChime, speakText])
-
-  const playCallSound = useCallback(() => {
-    if (playingRef.current) return
-    playingRef.current = true
-
-    const ctx = getAudioContext()
-
-    const now = ctx.currentTime
-
-    const master = ctx.createGain()
-    master.gain.value = 0.18
-    master.connect(ctx.destination)
-
-    const freq = 880
-    const osc = ctx.createOscillator()
-    const gate = ctx.createGain()
-
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    gate.gain.setValueAtTime(0.0001, now)
-    gate.gain.exponentialRampToValueAtTime(0.8, now + 0.01)
-    gate.gain.setValueAtTime(0.8, now + 0.12)
-    gate.gain.exponentialRampToValueAtTime(0.0001, now + 0.25)
-
-    osc.connect(gate)
-    gate.connect(master)
-    osc.start(now)
-    osc.stop(now + 0.3)
-
-    const osc2 = ctx.createOscillator()
-    const gate2 = ctx.createGain()
-    osc2.type = 'sine'
-    osc2.frequency.value = freq * 1.5
-    gate2.gain.setValueAtTime(0.0001, now + 0.3)
-    gate2.gain.exponentialRampToValueAtTime(0.7, now + 0.31)
-    gate2.gain.setValueAtTime(0.7, now + 0.42)
-    gate2.gain.exponentialRampToValueAtTime(0.0001, now + 0.55)
-
-    osc2.connect(gate2)
-    gate2.connect(master)
-    osc2.start(now + 0.3)
-    osc2.stop(now + 0.6)
-
-    setTimeout(() => { playingRef.current = false }, 700)
-  }, [])
 
   const playBeep = useCallback(() => {
     const ctx = getAudioContext()

@@ -266,6 +266,17 @@ dialog::backdrop {
   animation: kiosk-error-in 0.2s ease-out forwards;
 }
 
+@keyframes kiosk-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes page-in {
   from {
     opacity: 0;

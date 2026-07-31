@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   buildWeeklyCounterChartData,
   isWeeklyCounterChartEmpty,
-  WEEKDAY_ORDER,
   WEEKDAY_COLORS,
   WEEKDAY_LABELS,
 } from '../weeklyCounterChart'

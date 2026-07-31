@@ -29,7 +29,7 @@ interface ServiceSummaryChartProps {
 const chartHeight = 420
 function escapeCsv(value: string) {
   if (/[",\n]/.test(value)) {
-    return `"${value.replaceAll('"', '""')}"`
+    return `"${value.replace(/"/g, '""')}"`
   }
 
   return value

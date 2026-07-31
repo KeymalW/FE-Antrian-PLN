@@ -18,8 +18,8 @@ export function useWebSocket(handlers?: {
 }) {
   const wsRef = useRef<WebSocket | null>(null)
   const handlersRef = useRef(handlers)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const heartbeatRef = useRef<ReturnType<typeof setInterval>>()
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const retryCountRef = useRef(0)
 
   useEffect(() => {

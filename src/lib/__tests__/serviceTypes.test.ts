@@ -3,27 +3,8 @@ import {
   SERVICE_TYPE_ORDER,
   getServiceLabel,
   getServiceSortScore,
-  buildServiceSummary,
-  buildServiceChartData,
-  isServiceChartEmpty,
   SERVICE_STATUS_LABELS,
-  SERVICE_STATUS_COLORS,
 } from '../serviceTypes'
-import type { QueueTicket } from '../../types/queue'
-
-function makeTicket(overrides: Partial<QueueTicket> = {}): QueueTicket {
-  return {
-    id: '1',
-    queueNumber: 'G-001',
-    serviceType: 'pengaduan',
-    status: 'waiting',
-    counterNumber: null,
-    createdAt: new Date().toISOString(),
-    calledAt: null,
-    completedAt: null,
-    ...overrides,
-  }
-}
 
 describe('SERVICE_TYPE_ORDER', () => {
   it('contains 3 service types', () => {
@@ -60,63 +41,6 @@ describe('getServiceSortScore', () => {
   })
 })
 
-describe('buildServiceSummary', () => {
-  it('returns empty array for no tickets', () => {
-    expect(buildServiceSummary([])).toHaveLength(0)
-  })
-
-  it('groups tickets by serviceType and status', () => {
-    const tickets = [
-      makeTicket({ serviceType: 'pengaduan', status: 'waiting' }),
-      makeTicket({ id: '2', serviceType: 'pengaduan', status: 'completed' }),
-      makeTicket({ id: '3', serviceType: 'p2tl', status: 'waiting' }),
-    ]
-    const summary = buildServiceSummary(tickets)
-    expect(summary).toHaveLength(2)
-
-    const pengaduan = summary.find((s) => s.serviceType === 'pengaduan')
-    expect(pengaduan?.total).toBe(2)
-    expect(pengaduan?.waiting).toBe(1)
-    expect(pengaduan?.completed).toBe(1)
-
-    const p2tl = summary.find((s) => s.serviceType === 'p2tl')
-    expect(p2tl?.total).toBe(1)
-  })
-})
-
-describe('buildServiceChartData', () => {
-  it('returns rows for all 3 service types', () => {
-    const rows = buildServiceChartData([])
-    expect(rows).toHaveLength(3)
-  })
-
-  it('counts tickets per service type and status', () => {
-    const tickets = [
-      makeTicket({ serviceType: 'pengaduan', status: 'waiting' }),
-      makeTicket({ id: '2', serviceType: 'pengaduan', status: 'called' }),
-      makeTicket({ id: '3', serviceType: 'p2tl', status: 'completed' }),
-    ]
-    const rows = buildServiceChartData(tickets)
-
-    const pengaduan = rows.find((r) => r.serviceType === 'pengaduan')
-    expect(pengaduan?.waiting).toBe(1)
-    expect(pengaduan?.called).toBe(1)
-    expect(pengaduan?.total).toBe(2)
-  })
-})
-
-describe('isServiceChartEmpty', () => {
-  it('returns true when all totals are 0', () => {
-    const rows = buildServiceChartData([])
-    expect(isServiceChartEmpty(rows)).toBe(true)
-  })
-
-  it('returns false when there is data', () => {
-    const rows = buildServiceChartData([makeTicket()])
-    expect(isServiceChartEmpty(rows)).toBe(false)
-  })
-})
-
 describe('SERVICE_STATUS_LABELS', () => {
   it('has labels for all statuses', () => {
     expect(SERVICE_STATUS_LABELS.waiting).toBe('Menunggu')
@@ -127,10 +51,4 @@ describe('SERVICE_STATUS_LABELS', () => {
   })
 })
 
-describe('SERVICE_STATUS_COLORS', () => {
-  it('has hex colors for all statuses', () => {
-    Object.values(SERVICE_STATUS_COLORS).forEach((color) => {
-      expect(color).toMatch(/^#[0-9A-F]{6}$/i)
-    })
-  })
-})
+

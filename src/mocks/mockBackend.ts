@@ -541,12 +541,36 @@ export function mockTakeTicket(serviceType: ServiceType): QueueTicket {
   return clone(ticket)
 }
 
+function getGroupForService(serviceType: string): string {
+  if (serviceType === 'pengaduan' || serviceType === 'pb_pd_migrasi') return 'group_a'
+  if (serviceType === 'p2tl') return 'group_b'
+  return 'group_a'
+}
+
 export function mockCallQueue(payload: CallRequest): QueueTicket {
-  return updateTicket(payload.queueId, (ticket) => ({
-    ...ticket,
+  const ticket = mockState.tickets.find((t) => t.id === payload.queueId)
+  if (!ticket) throw new Error('Ticket not found')
+
+  const calledGroup = getGroupForService(ticket.serviceType)
+
+  const now = new Date().toISOString()
+  for (const t of mockState.tickets) {
+    if (
+      (t.status === 'called' || t.status === 'serving') &&
+      t.counterNumber === payload.counterNumber &&
+      getGroupForService(t.serviceType) === calledGroup
+    ) {
+      t.status = 'completed'
+      t.completedAt = now
+    }
+  }
+  saveState()
+
+  return updateTicket(payload.queueId, (t) => ({
+    ...t,
     status: 'called',
     counterNumber: payload.counterNumber,
-    calledAt: new Date().toISOString(),
+    calledAt: now,
     completedAt: null,
   }))
 }

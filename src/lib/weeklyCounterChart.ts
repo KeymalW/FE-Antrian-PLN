@@ -35,6 +35,7 @@ export function buildWeeklyCounterChartData(
 ) {
   const rows = WEEKDAY_ORDER.map((label) => ({
     dayIndex: WEEKDAY_ORDER.indexOf(label),
+    day: '',
     label,
     pengaduan: 0,
     pb_pd_migrasi: 0,
