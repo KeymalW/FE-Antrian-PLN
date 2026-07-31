@@ -84,7 +84,7 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 | File | Fungsi |
 |---|---|
 | `useWebSocket.ts` | Koneksi WebSocket ke `VITE_WS_URL`, auto-reconnect 3 detik, dispatch by message type, heartbeat `{ type: 'ping' }` tiap 30 detik. Skip kalo mock mode. |
-| `useQueueSound.ts` | `playCallSound()` (audio file), `playBeep()` (800Hz oscillator), `announceQueueCall()` (bell + TTS Indonesia), `clearAnnouncementQueue()`, `playBellChime()` (3 partial frequencies) |
+| `useQueueSound.ts` | `playBeep()` (800Hz oscillator), `announceQueueCall()` (bell + TTS Indonesia), `unlockAudio()`, `clearAnnouncementQueue()`, `playBellChime()` (audio file) |
 
 ## Env Variables
 
@@ -93,7 +93,7 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 | `VITE_API_URL` | `http://localhost:3001/api` | services/api.ts |
 | `VITE_WS_URL` | `ws://localhost:3001/ws` | hooks/useWebSocket.ts |
 | `VITE_USE_MOCK_DATA` | `'true'` (kalo bukan `'false'`) | mocks/mockMode.ts |
-| `VITE_SOUND_URL` | `/sounds/call.mp3` | hooks/useQueueSound.ts |
+| `VITE_PUBLIC_URL` | `http://localhost:5173` | pages/TrackTicket.tsx |
 
 ## Recent Bug Fixes
 
@@ -125,4 +125,4 @@ Semua service dual-mode (mock/real) via `USE_MOCK_DATA` flag.
 
 ## Tech Stack
 
-React 18, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, qrcode.react, xlsx, react-router-dom v6, axios, sonner, lucide-react.
+React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, qrcode.react, xlsx, react-router-dom v7, axios, sonner, lucide-react.

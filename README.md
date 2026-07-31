@@ -26,9 +26,11 @@ npm run build
 ## Environment
 
 | Variable | Default | Description |
-|---|---|---|
+|---|---|---|---|
+| `VITE_API_URL` | `http://localhost/antrian-pln/public/api` | Base URL backend API |
+| `VITE_WS_URL` | `ws://localhost:3001` | WebSocket URL real-time |
 | `VITE_PUBLIC_URL` | `http://localhost:5173` | URL untuk QR code |
-| `VITE_USE_MOCK_DATA` | `true` (otomatis) | Pakai mock backend |
+| `VITE_USE_MOCK_DATA` | `true` | Pakai mock backend |
 
 ## Mock Credentials
 
@@ -42,12 +44,16 @@ npm run build
 ## Routes
 
 | Path | Halaman |
-|---|---|
-| `/` | Kiosk (ambil tiket) |
+|---|---|---|
+| `/` | Landing page (navigasi 3 card) |
+| `/kiosk` | Kiosk (ambil tiket) |
+| `/login` | Login form |
 | `/track/:id` | Track tiket |
 | `/monitor` | Monitor TV |
 | `/petugas` | Dashboard petugas |
 | `/admin` | Dashboard admin |
+| `/admin/settings` | Pengaturan admin |
+| `*` | 404 Not Found |
 
 ## Struktur
 
