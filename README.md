@@ -1,6 +1,5 @@
 # FE Antrian PLN
 
-
 Sistem antrian digital PLN — kiosk ambil tiket, tracking real-time, monitor TV, dashboard petugas & admin.
 
 ## Fitur
@@ -25,24 +24,32 @@ npm run build
 
 ## Environment
 
+<<<<<<< HEAD
 | Variable | Default | Description |
 |---|---|---|---|
 | `VITE_API_URL` | `http://localhost/antrian-pln/public/api` | Base URL backend API |
 | `VITE_WS_URL` | `ws://localhost:3001` | WebSocket URL real-time |
 | `VITE_PUBLIC_URL` | `http://localhost:5173` | URL untuk QR code |
 | `VITE_USE_MOCK_DATA` | `true` | Pakai mock backend |
+=======
+| Variable             | Default                 | Description        |
+| -------------------- | ----------------------- | ------------------ |
+| `VITE_PUBLIC_URL`    | `http://localhost:5173` | URL untuk QR code  |
+| `VITE_USE_MOCK_DATA` | `true` (otomatis)       | Pakai mock backend |
+>>>>>>> 62cf0359a84abe126790499ac609c2fca6ccf68b
 
 ## Mock Credentials
 
-| Username | Password | Role | Counter |
-|---|---|---|---|
-| `admin` | `admin123` | admin | - |
+| Username   | Password     | Role    | Counter |
+| ---------- | ------------ | ------- | ------- |
+| `admin`    | `admin123`   | admin   | -       |
 | `petugas1` | `petugas123` | petugas | Loket 1 |
 | `petugas2` | `petugas123` | petugas | Loket 2 |
 | `petugas3` | `petugas123` | petugas | Loket 3 |
 
 ## Routes
 
+<<<<<<< HEAD
 | Path | Halaman |
 |---|---|---|
 | `/` | Landing page (navigasi 3 card) |
@@ -54,6 +61,15 @@ npm run build
 | `/admin` | Dashboard admin |
 | `/admin/settings` | Pengaturan admin |
 | `*` | 404 Not Found |
+=======
+| Path         | Halaman             |
+| ------------ | ------------------- |
+| `/`          | Kiosk (ambil tiket) |
+| `/track/:id` | Track tiket         |
+| `/monitor`   | Monitor TV          |
+| `/petugas`   | Dashboard petugas   |
+| `/admin`     | Dashboard admin     |
+>>>>>>> 62cf0359a84abe126790499ac609c2fca6ccf68b
 
 ## Struktur
 
@@ -67,3 +83,5 @@ src/
 ├── lib/             # utilities
 └── types/           # TypeScript types
 ```
+
+warning
