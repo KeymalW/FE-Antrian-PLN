@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
-import { useQueueStore } from '../store/queueStore'
+import { useQueueStore, getGroupForServiceType, hasAnyActiveCall, canCallServiceType } from '../store/queueStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
 import {
@@ -11,7 +11,6 @@ import {
   callQueue,
   skipQueue,
   completeQueue,
-  getLastCalled,
   clearQueueHistory,
 } from '../services/queue'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -30,21 +29,26 @@ import {
   DialogFooter,
   DialogClose,
 } from '../components/ui/dialog'
-import type { QueueTicket, QueueStats, QueueStatus } from '../types/queue'
+import type { QueueTicket, QueueStats, QueueStatus, ServiceType } from '../types/queue'
 import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon, KeyboardIcon, VolumeIcon } from 'lucide-react'
 import {
   getServiceLabel,
   getServiceSortScore,
   SERVICE_STATUS_LABELS,
   STATUS_BADGE_COLOR,
+  SERVICE_GROUP_LABELS,
+  getServiceGroup,
+  type ServiceGroup,
 } from '../lib/serviceTypes'
-import { buildWeeklyCounterChartData, type WeeklyCounterChartRow } from '../lib/weeklyCounterChart'
+import { buildWeeklyCounterChartData, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
 
 const ServiceSummaryChart = lazy(() =>
   import('../components/dashboard/ServiceSummaryChart').then((module) => ({
     default: module.ServiceSummaryChart,
   })),
 )
+
+const ALL_GROUPS: ServiceGroup[] = ['group_a', 'group_b']
 
 function QueueStatusBadge({ status }: { status: QueueStatus }) {
   return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
@@ -107,20 +111,90 @@ function sortWaitingTickets(tickets: QueueTicket[]) {
   })
 }
 
+function ActiveCallCard({
+  group,
+  ticket,
+  now,
+  actionLoading,
+  onComplete,
+  onRecall,
+  onSkip,
+}: {
+  group: ServiceGroup
+  ticket: QueueTicket | null
+  now: Date
+  actionLoading: string | null
+  onComplete: (id: string) => void
+  onRecall: (ticket: QueueTicket) => void
+  onSkip: (id: string) => void
+}) {
+  const groupLabel = SERVICE_GROUP_LABELS[group]
+
+  if (!ticket) {
+    return (
+      <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center">
+        <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
+        <div className="mt-1 text-sm text-muted-foreground">Tidak ada</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-center">
+      <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
+      <div className="mt-2 text-3xl font-bold text-green-600">{ticket.queueNumber}</div>
+      <div className="mt-1 text-sm capitalize text-muted-foreground">
+        {getServiceLabel(ticket.serviceType)}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        Loket #{ticket.counterNumber}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {formatClock(ticket.calledAt)} • {formatElapsed(ticket.calledAt, now)}
+      </div>
+      <div className="mt-3 flex justify-center gap-2">
+        <Button
+          size="sm"
+          onClick={() => onComplete(ticket.id)}
+          disabled={actionLoading === ticket.id}
+        >
+          {actionLoading === ticket.id && <Spinner data-icon="inline-start" />}
+          Selesai
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onRecall(ticket)}
+        >
+          Panggil Ulang
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
+          onClick={() => onSkip(ticket.id)}
+        >
+          Skip
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function PetugasDashboard() {
   const { user } = useAuthStore()
-  const { queueList, setQueueList, stats, setStats, setLastCalled, lastCalled, counterStatus, setCounterStatus } = useQueueStore()
+  const { queueList, setQueueList, stats, setStats, activeCalls, setActiveCall, counterStatus, setCounterStatus } = useQueueStore()
   const { playBeep, unlockAudio, announceQueueCall } = useQueueSound()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
-  const [serviceSummary, setServiceSummary] = useState<WeeklyCounterChartRow[]>([])
+  const [serviceSummary, setServiceSummary] = useState<WeeklyServiceChartRow[]>([])
   const [showServiceSummary, setShowServiceSummary] = useState(false)
   const [now, setNow] = useState(new Date())
 
   const counterNumber = user?.counterNumber ?? 1
   const isCounterPaused = counterStatus[counterNumber] ?? false
-  const hasActiveTicket = lastCalled !== null
+  const anyActive = hasAnyActiveCall(activeCalls)
   const fetchIdRef = useRef(0)
 
   useEffect(() => {
@@ -131,17 +205,27 @@ export default function PetugasDashboard() {
   const fetchData = useCallback(async () => {
     const id = ++fetchIdRef.current
     try {
-      const [list, statsData, last, completed, allTickets] = await Promise.all([
+      const [list, statsData, calledTickets, servingTickets, completed, allTickets] = await Promise.all([
         getQueueList({ status: 'waiting' }),
         getQueueStats(),
-        getLastCalled(counterNumber),
+        getQueueList({ status: 'called' }),
+        getQueueList({ status: 'serving' }),
         getQueueList({ status: 'completed', perPage: 10 }),
         getWeeklyQueueList(),
       ])
       if (id !== fetchIdRef.current) return
+
       setQueueList(sortWaitingTickets(list))
       setStats(statsData)
-      setLastCalled(last)
+
+      const allActive = [...calledTickets, ...servingTickets]
+      for (const group of ALL_GROUPS) {
+        const match = allActive.find(
+          (t) => getServiceGroup(t.serviceType as ServiceType) === group,
+        )
+        setActiveCall(group, match ?? null)
+      }
+
       setRecentCompleted(sortRecentCompleted(completed))
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
     } catch {
@@ -150,7 +234,7 @@ export default function PetugasDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [counterNumber, setQueueList, setStats, setLastCalled])
+  }, [setQueueList, setStats, setActiveCall])
 
   useWebSocket({
     onQueueUpdate: () => {
@@ -159,7 +243,8 @@ export default function PetugasDashboard() {
     onQueueCall: (msg) => {
       const payload = msg.payload as QueueTicket
       if (payload.counterNumber === counterNumber) {
-        setLastCalled(payload)
+        const group = getGroupForServiceType(payload.serviceType as ServiceType)
+        setActiveCall(group, payload)
         announceQueueCall(payload)
       }
       fetchData()
@@ -189,10 +274,21 @@ export default function PetugasDashboard() {
       return
     }
 
+    const ticket = queueList.find((t) => t.id === queueId)
+    if (!ticket) return
+
+    if (!canCallServiceType(activeCalls, ticket.serviceType as ServiceType)) {
+      const group = getGroupForServiceType(ticket.serviceType as ServiceType)
+      toast.error(`Masih ada tiket aktif di ${SERVICE_GROUP_LABELS[group]}. Selesaikan terlebih dahulu.`)
+      playBeep()
+      return
+    }
+
     setActionLoading(queueId)
     try {
       const result = await callQueue({ queueId, counterNumber })
-      setLastCalled(result)
+      const group = getGroupForServiceType(result.serviceType as ServiceType)
+      setActiveCall(group, result)
       announceQueueCall(result)
       await fetchData()
     } catch {
@@ -219,7 +315,6 @@ export default function PetugasDashboard() {
     setActionLoading(queueId)
     try {
       await completeQueue(queueId)
-      setLastCalled(null)
       await fetchData()
     } catch {
       toast.error('Gagal menyelesaikan antrian')
@@ -228,9 +323,8 @@ export default function PetugasDashboard() {
     }
   }
 
-  const handleRecall = () => {
-    if (!lastCalled) return
-    announceQueueCall(lastCalled)
+  const handleRecall = (ticket: QueueTicket) => {
+    announceQueueCall(ticket)
   }
 
   const handleClearHistory = async () => {
@@ -253,6 +347,17 @@ export default function PetugasDashboard() {
     setAudioUnlocked(true)
   }
 
+  const findNextCallable = () => {
+    for (const ticket of queueList) {
+      if (canCallServiceType(activeCalls, ticket.serviceType as ServiceType)) {
+        return ticket
+      }
+    }
+    return null
+  }
+
+  const firstActiveTicket = activeCalls.group_a ?? activeCalls.group_b
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
@@ -261,13 +366,18 @@ export default function PetugasDashboard() {
       switch (e.key) {
         case 'c':
         case 'C':
-        case ' ':
+        case ' ': {
           e.preventDefault()
-          if (!isCounterPaused && !hasActiveTicket && queueList.length > 0) {
+          if (isCounterPaused || queueList.length === 0) break
+          const next = findNextCallable()
+          if (next) {
             unlockAudio()
-            handleCall(queueList[0].id)
+            handleCall(next.id)
+          } else {
+            toast.info('Tidak ada antrian yang bisa dipanggil')
           }
           break
+        }
         case 's':
         case 'S':
           e.preventDefault()
@@ -276,18 +386,18 @@ export default function PetugasDashboard() {
           }
           break
         case 'Enter':
-          if (hasActiveTicket && lastCalled) {
+          if (firstActiveTicket) {
             e.preventDefault()
             unlockAudio()
-            handleComplete(lastCalled.id)
+            handleComplete(firstActiveTicket.id)
           }
           break
         case 'r':
         case 'R':
-          if (hasActiveTicket) {
+          if (firstActiveTicket) {
             e.preventDefault()
             unlockAudio()
-            handleRecall()
+            handleRecall(firstActiveTicket)
           }
           break
         case 'i':
@@ -303,7 +413,7 @@ export default function PetugasDashboard() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isCounterPaused, hasActiveTicket, queueList, lastCalled, counterNumber])
+  }, [isCounterPaused, queueList, activeCalls, counterNumber, firstActiveTicket])
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -381,9 +491,9 @@ export default function PetugasDashboard() {
                 </div>
               )}
 
-              {hasActiveTicket && !isCounterPaused && (
+              {anyActive && !isCounterPaused && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                  Selesaikan antrian yang sedang dilayani terlebih dahulu sebelum memanggil antrian baru.
+                  Selesaikan antrian yang sedang dilayani terlebih dahulu. Hanya antrian dari layanan berbeda yang bisa dipanggil bersamaan.
                 </div>
               )}
 
@@ -400,45 +510,57 @@ export default function PetugasDashboard() {
                 </div>
               ) : (
                 <ScrollArea className="h-[16rem] pr-3">
-                  {queueList.map((q) => (
-                    <div
-                      key={q.id}
-                      className="grid gap-3 border-b py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-                    >
-                      <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
-                        <span className="text-lg font-bold tabular-nums text-primary">
-                          {q.queueNumber}
-                        </span>
-                        <div className="min-w-0 flex flex-col">
-                          <span className="truncate text-sm capitalize text-muted-foreground">
-                            {getServiceLabel(q.serviceType)}
+                  {queueList.map((q) => {
+                    const ticketGroup = getGroupForServiceType(q.serviceType as ServiceType)
+                    const isBlocked = !canCallServiceType(activeCalls, q.serviceType as ServiceType)
+
+                    return (
+                      <div
+                        key={q.id}
+                        className="grid gap-3 border-b py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                      >
+                        <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
+                          <span className="text-lg font-bold tabular-nums text-primary">
+                            {q.queueNumber}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            Dicetak {formatClock(q.createdAt)}
-                          </span>
+                          <div className="min-w-0 flex flex-col">
+                            <span className="truncate text-sm capitalize text-muted-foreground">
+                              {getServiceLabel(q.serviceType)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Dicetak {formatClock(q.createdAt)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <QueueStatusBadge status={q.status} />
+                            {isBlocked && (
+                              <Badge className="bg-amber-100 text-amber-700 text-[10px]">
+                                {SERVICE_GROUP_LABELS[ticketGroup]}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <QueueStatusBadge status={q.status} />
+                        <div className="flex flex-wrap gap-2 md:justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => handleCall(q.id)}
+                            disabled={actionLoading === q.id || isCounterPaused || isBlocked}
+                          >
+                            {actionLoading === q.id && <Spinner data-icon="inline-start" />}
+                            Panggil
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            onClick={() => handleSkip(q.id)}
+                          >
+                            Skip
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2 md:justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => handleCall(q.id)}
-                          disabled={actionLoading === q.id || isCounterPaused || hasActiveTicket}
-                        >
-                          {actionLoading === q.id && <Spinner data-icon="inline-start" />}
-                          Panggil
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
-                          onClick={() => handleSkip(q.id)}
-                        >
-                          Skip
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </ScrollArea>
               )}
             </CardContent>
@@ -481,54 +603,21 @@ export default function PetugasDashboard() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle>Sedang Dilayani di Loket #{counterNumber}</CardTitle>
+              <CardTitle>Sedang Dilayani</CardTitle>
             </CardHeader>
-            <CardContent>
-              {lastCalled ? (
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-green-600">
-                    {lastCalled.queueNumber}
-                  </div>
-                  <div className="mt-1 text-sm capitalize text-muted-foreground">
-                    {getServiceLabel(lastCalled.serviceType)}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Dipanggil di Loket #{lastCalled.counterNumber ?? counterNumber}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Waktu panggil {formatClock(lastCalled.calledAt)} • Durasi {formatElapsed(lastCalled.calledAt, now)}
-                  </div>
-                  <div className="mt-4 flex justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleComplete(lastCalled.id)}
-                      disabled={actionLoading === lastCalled.id}
-                    >
-                      {actionLoading === lastCalled.id && <Spinner data-icon="inline-start" />}
-                      Selesai
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleRecall}
-                    >
-                      Panggil Ulang
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-gray-100 text-gray-800 hover:bg-gray-200"
-                      onClick={() => handleSkip(lastCalled.id)}
-                    >
-                      Skip
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>Tidak ada</p>
-                </div>
-              )}
+            <CardContent className="space-y-3">
+              {ALL_GROUPS.map((group) => (
+                <ActiveCallCard
+                  key={group}
+                  group={group}
+                  ticket={activeCalls[group]}
+                  now={now}
+                  actionLoading={actionLoading}
+                  onComplete={handleComplete}
+                  onRecall={handleRecall}
+                  onSkip={handleSkip}
+                />
+              ))}
             </CardContent>
           </Card>
 
@@ -632,10 +721,10 @@ export default function PetugasDashboard() {
           </DialogHeader>
           <div className="space-y-2 text-sm">
             {[
-              { key: 'C / Spasi', desc: 'Panggil antrian berikutnya' },
+              { key: 'C / Spasi', desc: 'Panggil antrian berikutnya (cek konflik grup)' },
               { key: 'S', desc: 'Skip / lewati antrian teratas' },
-              { key: 'Enter', desc: 'Selesaikan antrian yang sedang dilayani' },
-              { key: 'R', desc: 'Panggil ulang nomor terakhir' },
+              { key: 'Enter', desc: 'Selesaikan antrian aktif' },
+              { key: 'R', desc: 'Panggil ulang antrian aktif' },
               { key: 'I', desc: 'Aktifkan / Istirahatkan loket' },
               { key: '?', desc: 'Tampilkan / sembunyikan bantuan ini' },
             ].map(({ key, desc }) => (

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import Kiosk from '../Kiosk'
+import type { QueueTicket } from '../../types/queue'
 
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -93,7 +94,7 @@ describe('Kiosk', () => {
 
   it('disables buttons while loading', async () => {
     const { takeTicket } = await import('../../services/queue')
-    let resolveTicket!: (value: unknown) => void
+    let resolveTicket!: (value: QueueTicket) => void
     vi.mocked(takeTicket).mockImplementationOnce(
       () => new Promise((resolve) => { resolveTicket = resolve })
     )
@@ -112,7 +113,16 @@ describe('Kiosk', () => {
       expect(pengaduanBtn).toBeDisabled()
     })
 
-    resolveTicket({ id: 'ticket-123', queueNumber: 'G-001' })
+    resolveTicket({
+      id: 'ticket-123',
+      queueNumber: 'G-001',
+      serviceType: 'pengaduan',
+      status: 'waiting',
+      counterNumber: 1,
+      createdAt: new Date().toISOString(),
+      calledAt: null,
+      completedAt: null,
+    })
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/track/ticket-123')

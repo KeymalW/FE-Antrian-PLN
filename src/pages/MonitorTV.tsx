@@ -171,16 +171,16 @@ export default function MonitorTV() {
   }, [fetchAll])
 
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-white">
+    <div className="flex h-screen flex-col bg-white text-gray-900">
       {/* Header */}
-      <div className="group flex items-center justify-between border-b border-white/10 bg-gray-900/95 px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
+      <div className="group flex items-center justify-between border-b border-white/10 bg-[#001134] px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <PLNLogo className="size-12" />
           <div>
-            <h1 className="text-2xl font-bold tracking-wide">
+            <h1 className="text-2xl font-bold tracking-wide text-white">
               Sistem Antrian
             </h1>
-            <p className="text-sm text-white/60">PT PLN (Persero)</p>
+            <p className="text-sm text-white">PT PLN (Persero)</p>
           </div>
         </div>
         <div className="flex items-center gap-3 opacity-0 transition-all duration-300 group-hover:opacity-100">
@@ -221,14 +221,14 @@ export default function MonitorTV() {
           </button>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-light tracking-wider">
+          <div className="text-2xl font-light tracking-wider text-white">
             {time.toLocaleTimeString('id-ID', {
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit',
             })}
           </div>
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-white">
             {time.toLocaleDateString('id-ID', {
               weekday: 'long',
               year: 'numeric',
@@ -255,7 +255,7 @@ export default function MonitorTV() {
 
         {/* Active Call */}
         <div
-          className={`flex w-1/2 flex-col items-center justify-center rounded-2xl bg-gray-800/60 ring-1 backdrop-blur transition-all duration-500 ${
+          className={`flex w-1/2 flex-col items-center justify-center rounded-2xl bg-[#001134] ring-1 backdrop-blur transition-all duration-500 ${
             activeCallPulse ? 'ring-pln-cyan/50 animate-call-glow' : 'ring-pln-cyan/10'
           }`}
         >
@@ -316,8 +316,8 @@ export default function MonitorTV() {
                   isPaused
                     ? 'bg-red-950/40 ring-red-500/30'
                     : isPulsing
-                      ? 'bg-gray-800/60 ring-pln-cyan/50 animate-pulse'
-                      : 'bg-gray-800/60 ring-pln-cyan/10'
+                      ? 'bg-[#001134] ring-pln-cyan/50 animate-pulse'
+                      : 'bg-[#001134] ring-pln-cyan/10'
                 }`}
               >
                 <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-pln-cyan/80">
@@ -353,14 +353,14 @@ export default function MonitorTV() {
         </div>
 
         {/* QueueBoard Compact */}
-        <div className="flex flex-[2] rounded-2xl bg-gray-800/60 p-4 ring-1 ring-pln-cyan/10 backdrop-blur">
+        <div className="flex flex-[2] rounded-2xl bg-[#001134] p-4 ring-1 ring-pln-cyan/10 backdrop-blur">
           <QueueBoard waitingList={waitingList} />
         </div>
       </div>
 
       {/* Marquee */}
-      <div className="shrink-0 overflow-hidden border-t border-pln-cyan/10 bg-gray-950/50 px-6 py-3">
-        <p className="animate-marquee whitespace-nowrap text-sm text-pln-cyan/60">
+      <div className="shrink-0 overflow-hidden border-t border-pln-cyan/10 bg-[#001134] px-6 py-3">
+        <p className="animate-marquee whitespace-nowrap text-sm text-white">
           Terima kasih telah mengunjungi loket pelayanan PLN. Harap siapkan
           dokumen yang diperlukan sebelum nomor antrian Anda dipanggil.
           Gunakan aplikasi PLN Mobile untuk kemudahan transaksi dalam
