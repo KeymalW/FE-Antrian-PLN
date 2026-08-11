@@ -13,6 +13,10 @@ import type { QueueTicket, ServiceType } from '../types/queue'
 
 const SERVICE_TYPES: ServiceType[] = ['pengaduan', 'pb_pd_migrasi', 'p2tl']
 
+const DUCK_RATIO = 0.3
+const DUCK_FLOOR = 0.1
+const DUCK_DURATION_MS = 12000
+
 const COUNTER_TO_SERVICE: Record<number, ServiceType> = {
   1: 'pengaduan',
   2: 'pb_pd_migrasi',
@@ -41,6 +45,24 @@ export default function MonitorTV() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [videoMuted, setVideoMuted] = useState(true)
   const [videoVolume, setVideoVolume] = useState(0.2)
+  const [videoDucking, setVideoDucking] = useState(false)
+  const duckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const effectiveVideoVolume = videoDucking
+    ? Math.max(videoVolume * DUCK_RATIO, DUCK_FLOOR)
+    : videoVolume
+
+  const triggerVideoDuck = useCallback(() => {
+    setVideoDucking(true)
+    if (duckTimerRef.current) clearTimeout(duckTimerRef.current)
+    duckTimerRef.current = setTimeout(() => setVideoDucking(false), DUCK_DURATION_MS)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (duckTimerRef.current) clearTimeout(duckTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -143,6 +165,7 @@ export default function MonitorTV() {
         setJustCalledServiceType(null)
       }, 6000)
 
+      triggerVideoDuck()
       fetchAll()
     },
     onQueueUpdate: () => { fetchAll() },
@@ -249,7 +272,7 @@ export default function MonitorTV() {
             loop={videoUrls.length <= 1}
             onEnded={handleVideoEnded}
             muted={videoMuted}
-            volume={videoVolume}
+            volume={effectiveVideoVolume}
           />
         </div>
 
