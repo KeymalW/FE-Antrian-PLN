@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { login as loginApi } from '../services/auth'
+import { getRoleHome } from '../lib/roles'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -24,7 +25,7 @@ export default function Login() {
     try {
       const res = await loginApi({ username, password })
       login(res.user, res.token)
-      navigate(res.user.role === 'admin' ? '/admin' : '/petugas')
+      navigate(getRoleHome(res.user.role))
     } catch {
       setError('Username atau password salah')
     } finally {

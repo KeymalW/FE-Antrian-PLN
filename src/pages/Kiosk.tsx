@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { takeTicket } from '../services/queue'
+import { logout as logoutApi } from '../services/auth'
+import { useAuthStore } from '../store/authStore'
 import { getEstimatedWaitTime } from '../lib/estimatedWaitTime'
 import type { EstimatedWait } from '../lib/estimatedWaitTime'
 import {
@@ -11,6 +14,7 @@ import {
   MaximizeIcon,
   MinimizeIcon,
   Users,
+  LogOutIcon,
 } from 'lucide-react'
 import { Spinner } from '../components/ui/spinner'
 import { PLNLogo } from '../components/layout/PLNLogo'
@@ -89,11 +93,22 @@ function ServiceCard({
 
 export default function Kiosk() {
   const navigate = useNavigate()
+  const { logout } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [estimates, setEstimates] = useState<Record<string, EstimatedWait | null>>({})
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [time, setTime] = useState(new Date())
+
+  const handleLogout = async () => {
+    try {
+      await logoutApi()
+    } catch {
+      toast.error('Gagal logout dari server')
+    }
+    logout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -172,17 +187,27 @@ export default function Kiosk() {
           </div>
         </div>
 
-        {/* Second row: Layanan Mandiri + fullscreen toggle */}
+        {/* Second row: Layanan Mandiri + fullscreen toggle + logout */}
         <div className="mt-1 flex items-center justify-between">
           <div className="text-xs text-white/70">Layanan Mandiri</div>
-          <button
-            onClick={toggleFullscreen}
-            className="rounded-md p-1 text-white/50 transition-colors hover:bg-white/20 hover:text-white
-              opacity-0 transition-all duration-300 group-hover:opacity-100"
-            title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
-          >
-            {isFullscreen ? <MinimizeIcon className="size-4" /> : <MaximizeIcon className="size-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleLogout}
+              className="rounded-md p-1 text-white/50 transition-colors hover:bg-white/20 hover:text-white
+                opacity-0 transition-all duration-300 group-hover:opacity-100"
+              title="Logout"
+            >
+              <LogOutIcon className="size-4" />
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className="rounded-md p-1 text-white/50 transition-colors hover:bg-white/20 hover:text-white
+                opacity-0 transition-all duration-300 group-hover:opacity-100"
+              title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? <MinimizeIcon className="size-4" /> : <MaximizeIcon className="size-4" />}
+            </button>
+          </div>
         </div>
       </div>
 

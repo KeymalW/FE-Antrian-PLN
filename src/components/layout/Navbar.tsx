@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '../../store/authStore'
 import { Button } from '../ui/button'
 import { logout as logoutApi } from '../../services/auth'
+import { getRoleHome } from '../../lib/roles'
 import { PLNLogo } from './PLNLogo'
 
 export function Navbar() {
@@ -23,6 +24,8 @@ export function Navbar() {
     navigate('/login')
   }
 
+  const roleHome = user ? getRoleHome(user.role) : '/login'
+
   return (
     <nav className="flex h-14 items-center justify-between bg-pln-teal px-6">
       <div className="flex items-center gap-6">
@@ -33,17 +36,21 @@ export function Navbar() {
           </span>
         </Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link to="/kiosk" className={`no-underline ${isActive('/kiosk') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
-            Kiosk
-          </Link>
+          {isAuthenticated && user?.role === 'kiosk' && (
+            <Link to="/kiosk" className={`no-underline ${isActive('/kiosk') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
+              Kiosk
+            </Link>
+          )}
           {isAuthenticated && (
-            <Link to={user?.role === 'admin' ? '/admin' : '/petugas'} className={`no-underline ${isActive('/admin') || isActive('/petugas') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
+            <Link to={roleHome} className={`no-underline ${isActive(roleHome) ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
               Dashboard
             </Link>
           )}
-          <Link to="/monitor" className={`no-underline ${isActive('/monitor') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
-            Monitor
-          </Link>
+          {isAuthenticated && user?.role === 'tvdisplay' && (
+            <Link to="/monitor" className={`no-underline ${isActive('/monitor') ? 'font-medium text-white' : 'text-white/70 hover:text-white'}`}>
+              Monitor
+            </Link>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -66,4 +73,4 @@ export function Navbar() {
       </div>
     </nav>
   )
-} 
+}

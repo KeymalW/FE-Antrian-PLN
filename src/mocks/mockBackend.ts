@@ -14,48 +14,48 @@ const servicePrefix: Record<ServiceType, string> = {
 }
 
 const mockUsers: Record<string, { user: User; password: string; token: string }> = {
-  admin: {
-    password: 'admin123',
+  adminulpsubang: {
+    password: 'adminulpsubang',
     token: 'mock-admin-token',
     user: {
       id: 'user-admin',
-      username: 'admin',
-      name: 'Admin PLN',
+      username: 'adminulpsubang',
+      name: 'Admin ULP Subang',
       role: 'admin',
       counterNumber: null,
     },
   },
-  petugas1: {
-    password: 'petugas123',
+  petugasulpsubang: {
+    password: 'petugasulpsubang',
     token: 'mock-petugas-token',
     user: {
       id: 'user-petugas-1',
-      username: 'petugas1',
-      name: 'Petugas Loket 1',
+      username: 'petugasulpsubang',
+      name: 'Petugas ULP Subang',
       role: 'petugas',
       counterNumber: 1,
     },
   },
-  petugas2: {
-    password: 'petugas123',
-    token: 'mock-petugas-token',
+  kioskulpsubang: {
+    password: 'kioskulpsubang',
+    token: 'mock-kiosk-token',
     user: {
-      id: 'user-petugas-2',
-      username: 'petugas2',
-      name: 'Petugas Loket 2',
-      role: 'petugas',
-      counterNumber: 2,
+      id: 'user-kiosk',
+      username: 'kioskulpsubang',
+      name: 'Kiosk ULP Subang',
+      role: 'kiosk',
+      counterNumber: null,
     },
   },
-  petugas3: {
-    password: 'petugas123',
-    token: 'mock-petugas-token',
+  tvulpsubang: {
+    password: 'tvulpsubang',
+    token: 'mock-tv-token',
     user: {
-      id: 'user-petugas-3',
-      username: 'petugas3',
-      name: 'Petugas Loket 3',
-      role: 'petugas',
-      counterNumber: 3,
+      id: 'user-tv',
+      username: 'tvulpsubang',
+      name: 'TV Display ULP Subang',
+      role: 'tvdisplay',
+      counterNumber: null,
     },
   },
 }

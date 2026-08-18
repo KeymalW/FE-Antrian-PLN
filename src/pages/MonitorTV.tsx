@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { MaximizeIcon, MinimizeIcon, Volume2Icon, VolumeXIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { MaximizeIcon, MinimizeIcon, Volume2Icon, VolumeXIcon, LogOutIcon } from 'lucide-react'
 import { useQueueStore } from '../store/queueStore'
+import { useAuthStore } from '../store/authStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
 import { getQueueList } from '../services/queue'
+import { logout as logoutApi } from '../services/auth'
 import { getMonitorVideos, getServerVideoVolume, setLocalVideoVolume } from '../services/settings'
 import { QueueBoard } from '../components/monitor/QueueBoard'
 import { VideoPlayer } from '../components/monitor/VideoPlayer'
@@ -25,6 +29,8 @@ const COUNTER_TO_SERVICE: Record<number, ServiceType> = {
 
 export default function MonitorTV() {
   const { setQueueList, counterStatus } = useQueueStore()
+  const { logout } = useAuthStore()
+  const navigate = useNavigate()
   const { unlockAudio } = useQueueSound({
     ttsRate: 0.92,
     ttsPitch: 1,
@@ -42,6 +48,7 @@ export default function MonitorTV() {
   const [refreshing, setRefreshing] = useState(false)
   const [videoUrls, setVideoUrls] = useState<string[]>([])
   const [videoIndex, setVideoIndex] = useState(0)
+  const [videoCount, setVideoCount] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [videoMuted, setVideoMuted] = useState(true)
   const [videoVolume, setVideoVolume] = useState(0.2)
@@ -88,6 +95,16 @@ export default function MonitorTV() {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await logoutApi()
+    } catch {
+      toast.error('Gagal logout dari server')
+    }
+    logout()
+    navigate('/login')
+  }
+
   const currentSrc = videoUrls[videoIndex]
 
   const handleVideoEnded = useCallback(() => {
@@ -108,11 +125,12 @@ export default function MonitorTV() {
     })
   }, [])
 
-  useEffect(() => {
-    if (videoIndex >= videoUrls.length && videoUrls.length > 0) {
+  if (videoCount !== videoUrls.length) {
+    setVideoCount(videoUrls.length)
+    if (videoUrls.length > 0 && videoIndex >= videoUrls.length) {
       setVideoIndex(0)
     }
-  }, [videoUrls.length, videoIndex])
+  }
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -241,6 +259,13 @@ export default function MonitorTV() {
             title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
           >
             {isFullscreen ? <MinimizeIcon className="size-5" /> : <MaximizeIcon className="size-5" />}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+            title="Logout"
+          >
+            <LogOutIcon className="size-5" />
           </button>
         </div>
         <div className="text-right">
