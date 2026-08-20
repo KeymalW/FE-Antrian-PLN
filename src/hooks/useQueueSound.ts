@@ -73,7 +73,6 @@ export function useQueueSound(options?: QueueSoundOptions) {
     }
 
     window.speechSynthesis.speak(utterance)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRate, ttsPitch, ttsVolume])
 
   const playBellChime = useCallback(() => {
@@ -93,7 +92,9 @@ export function useQueueSound(options?: QueueSoundOptions) {
       source.connect(master)
       master.connect(ctx.destination)
       source.start(0)
-    } catch {}
+    } catch {
+      // audio gagal dimainkan — abaikan
+    }
   }, [])
 
   const unlockAudio = useCallback(async () => {
@@ -108,7 +109,9 @@ export function useQueueSound(options?: QueueSoundOptions) {
       const silent = new Audio()
       silent.volume = 0.01
       silent.play().catch(() => {})
-    } catch {}
+    } catch {
+      // audio gagal dimainkan — abaikan
+    }
   }, [])
 
   const announceQueueCall = useCallback((ticket: Pick<QueueTicket, 'queueNumber' | 'counterNumber' | 'serviceType'>) => {

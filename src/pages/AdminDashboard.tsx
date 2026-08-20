@@ -182,9 +182,27 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    fetchVideos()
-    getServerVideoVolume().then(setVideoVolume)
-  }, [fetchVideos])
+    let cancelled = false
+
+    getMonitorVideos()
+      .then((data) => {
+        if (!cancelled) setVideos(data)
+      })
+      .catch(() => {
+        if (!cancelled) setVideos([])
+      })
+      .finally(() => {
+        if (!cancelled) setVideoLoading(false)
+      })
+
+    getServerVideoVolume().then((v) => {
+      if (!cancelled) setVideoVolume(v)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

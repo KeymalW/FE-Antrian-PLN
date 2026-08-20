@@ -143,9 +143,14 @@ describe('buildWeeklyCounterChartData', () => {
     const monday = new Date(today)
     monday.setDate(today.getDate() + diff)
 
+    const invalidTicket = {
+      ...makeTicket({ id: '2', createdAt: monday.toISOString() }),
+      serviceType: 'unknown',
+    } as unknown as QueueTicket
+
     const tickets = [
       makeTicket({ createdAt: monday.toISOString(), serviceType: 'pengaduan' }),
-      { ...makeTicket({ id: '2', createdAt: monday.toISOString() }), serviceType: 'unknown' as any },
+      invalidTicket,
     ]
 
     const rows = buildWeeklyCounterChartData(tickets)

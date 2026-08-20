@@ -268,7 +268,7 @@ export default function PetugasDashboard() {
     return () => window.clearTimeout(timer)
   }, [fetchData])
 
-  const handleCall = async (queueId: string) => {
+  const handleCall = useCallback(async (queueId: string) => {
     if (isCounterPaused) {
       playBeep()
       return
@@ -297,9 +297,9 @@ export default function PetugasDashboard() {
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [isCounterPaused, playBeep, queueList, activeCalls, setActionLoading, counterNumber, setActiveCall, announceQueueCall, fetchData])
 
-  const handleSkip = async (queueId: string) => {
+  const handleSkip = useCallback(async (queueId: string) => {
     setActionLoading(queueId)
     try {
       await skipQueue(queueId)
@@ -309,9 +309,9 @@ export default function PetugasDashboard() {
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [setActionLoading, fetchData])
 
-  const handleComplete = async (queueId: string) => {
+  const handleComplete = useCallback(async (queueId: string) => {
     setActionLoading(queueId)
     try {
       await completeQueue(queueId)
@@ -321,11 +321,11 @@ export default function PetugasDashboard() {
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [setActionLoading, fetchData])
 
-  const handleRecall = (ticket: QueueTicket) => {
+  const handleRecall = useCallback((ticket: QueueTicket) => {
     announceQueueCall(ticket)
-  }
+  }, [announceQueueCall])
 
   const handleClearHistory = async () => {
     setActionLoading('clear-history')
@@ -347,14 +347,14 @@ export default function PetugasDashboard() {
     setAudioUnlocked(true)
   }
 
-  const findNextCallable = () => {
+  const findNextCallable = useCallback(() => {
     for (const ticket of queueList) {
       if (canCallServiceType(activeCalls, ticket.serviceType as ServiceType)) {
         return ticket
       }
     }
     return null
-  }
+  }, [queueList, activeCalls])
 
   const firstActiveTicket = activeCalls.group_a ?? activeCalls.group_b
 
@@ -413,7 +413,20 @@ export default function PetugasDashboard() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isCounterPaused, queueList, activeCalls, counterNumber, firstActiveTicket])
+  }, [
+    isCounterPaused,
+    queueList,
+    activeCalls,
+    counterNumber,
+    firstActiveTicket,
+    findNextCallable,
+    handleCall,
+    handleComplete,
+    handleRecall,
+    handleSkip,
+    setCounterStatus,
+    unlockAudio,
+  ])
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">

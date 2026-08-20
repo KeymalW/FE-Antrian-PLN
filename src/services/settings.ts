@@ -19,14 +19,18 @@ export function getLocalVideoVolume(): number {
       const v = Number(stored)
       return v >= 0 && v <= 1 ? v : 0.2
     }
-  } catch {}
+  } catch {
+    // localStorage tidak tersedia (private mode) — pakai default
+  }
   return 0.2
 }
 
 export function setLocalVideoVolume(volume: number): void {
   try {
     localStorage.setItem(VOLUME_LOCAL_KEY, String(Math.max(0, Math.min(1, volume))))
-  } catch {}
+  } catch {
+    // localStorage tidak tersedia (private mode) — abaikan
+  }
 }
 
 export async function getServerVideoVolume(): Promise<number> {
