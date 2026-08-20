@@ -35,26 +35,28 @@ describe('Kiosk', () => {
   it('renders welcome heading', async () => {
     renderKiosk()
     await waitFor(() => {
-      expect(screen.getByText('Selamat Datang')).toBeInTheDocument()
+      expect(screen.getByText('Selamat Datang di')).toBeInTheDocument()
     })
+    expect(screen.getByText('ULP Subang')).toBeInTheDocument()
+    expect(screen.getByText('Silakan pilih layanan yang Anda butuhkan')).toBeInTheDocument()
   })
 
   it('renders all 3 service buttons', async () => {
     renderKiosk()
     await waitFor(() => {
-      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
+      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
     })
-    expect(screen.getByText('PB/PD/Migrasi')).toBeInTheDocument()
+    expect(screen.getByText('PB/PD/migrasi')).toBeInTheDocument()
     expect(screen.getByText('P2TL')).toBeInTheDocument()
   })
 
-  it('renders service descriptions', async () => {
+  it('renders queue status badge on each card', async () => {
     renderKiosk()
     await waitFor(() => {
-      expect(screen.getByText('Lapor gangguan atau keluhan')).toBeInTheDocument()
+      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
     })
-    expect(screen.getByText('Pasang baru, perubahan daya, migrasi')).toBeInTheDocument()
-    expect(screen.getByText('Penertiban pemakaian tenaga listrik')).toBeInTheDocument()
+    const badges = screen.getAllByText('Belum Ada Antrian')
+    expect(badges).toHaveLength(3)
   })
 
   it('shows loading state then navigates after taking ticket', async () => {
@@ -62,10 +64,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
+      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
+    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
     await user.click(pengaduanBtn)
 
     await waitFor(() => {
@@ -81,10 +83,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
+      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
+    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
     await user.click(pengaduanBtn)
 
     await waitFor(() => {
@@ -103,10 +105,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
+      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
+    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
     user.click(pengaduanBtn)
 
     await waitFor(() => {

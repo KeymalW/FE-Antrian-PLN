@@ -25,8 +25,21 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-pln-yellow: #efe62f;
-  --color-pln-teal: #125d72;
+  --color-pln-teal: #093b9e;
   --color-pln-cyan: #22d3ee;
+  --color-pln-950: #030b24;
+  --color-pln-900: #050f2e;
+  --color-pln-800: #06153f;
+  --color-pln-700: #08225f;
+  --color-pln-600: #093b9e;
+  --color-pln-500: #0f4fd0;
+  --color-pln-400: #2f6fff;
+  --color-pln-300: #7ba3ff;
+  --color-pln-200: #bcd2ff;
+  --color-pln-100: #dce8ff;
+  --color-pln-50: #f0f5ff;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-display: 'Poppins', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -275,6 +288,21 @@ dialog::backdrop {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+@keyframes kiosk-glow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+.animate-kiosk-glow {
+  animation: kiosk-glow 4s ease-in-out infinite;
 }
 
 @keyframes page-in {
