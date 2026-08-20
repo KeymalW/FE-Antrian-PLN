@@ -87,12 +87,8 @@ export default function Kiosk() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [time, setTime] = useState(new Date())
 
-  const handleLogout = async () => {
-    try {
-      await logoutApi()
-    } catch {
-      toast.error('Gagal logout dari server')
-    }
+  const handleLogout = () => {
+    logoutApi().catch(() => toast.error('Gagal logout dari server'))
     logout()
     navigate('/login')
   }
@@ -168,7 +164,10 @@ export default function Kiosk() {
       />
 
       {/* ===== Header: clock top-right + logout top-left ===== */}
-      <div className="absolute right-8 top-7 z-10 text-right">
+      <div
+        className="pointer-events-none absolute right-8 top-7 z-10 text-right"
+        aria-hidden="true"
+      >
         <div className="text-3xl font-bold tabular-nums tracking-widest text-white/90">
           {hours}:{minutes}:{seconds}
         </div>
@@ -177,7 +176,7 @@ export default function Kiosk() {
 
       <button
         onClick={handleLogout}
-        className="absolute left-8 top-7 z-10 flex size-10 items-center justify-center rounded-full
+        className="absolute left-8 top-7 z-20 flex size-10 items-center justify-center rounded-full
           bg-white/10 text-white/50 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
         title="Logout"
         aria-label="Logout"
@@ -186,7 +185,7 @@ export default function Kiosk() {
       </button>
 
       {/* ===== Welcome header ===== */}
-      <header className="relative z-10 flex flex-col items-center px-8 pt-14 text-center">
+      <header className="pointer-events-none relative z-10 flex flex-col items-center px-8 pt-14 text-center">
         <div className="relative">
           <div
             className="absolute -inset-5 rounded-full bg-pln-400/30 blur-2xl animate-kiosk-glow"
@@ -250,7 +249,7 @@ export default function Kiosk() {
           className="flex size-14 items-center justify-center rounded-full bg-white text-pln-600
             shadow-[0_10px_30px_-8px_rgba(3,11,36,0.7)]
             transition-all duration-200 hover:scale-105 hover:shadow-[0_14px_36px_-8px_rgba(3,11,36,0.85)]
-            active:scale-95"
+            active:scale-95 z-20"
           title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
           aria-label={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
         >
