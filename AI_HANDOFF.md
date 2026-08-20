@@ -2,7 +2,7 @@
 
 ## Ringkasan
 
-Sistem antrian digital PLN. 6 halaman, dual-mode (mock/real API), WebSocket real-time, sound notification (TTS + bell), grafik mingguan, QR code tracking, role-based access (admin/petugas).
+Sistem antrian digital PLN. 6 halaman, dual-mode (mock/real API), WebSocket real-time, sound notification (TTS + bell), grafik mingguan, QR code tracking, role-based access (admin/petugas/kiosk/tvdisplay).
 
 ## Mode Mock
 
@@ -13,10 +13,12 @@ State mock di-persist ke `sessionStorage` dengan key `mockQueueState` biar gak i
 
 | Username | Password | Role | Counter |
 |---|---|---|---|
-| `admin` | `admin123` | admin | - |
-| `petugas1` | `petugas123` | petugas | 1 |
-| `petugas2` | `petugas123` | petugas | 2 |
-| `petugas3` | `petugas123` | petugas | 3 |
+| `adminulpsubang` | `adminulpsubang` | admin | - |
+| `petugasulpsubang` | `petugasulpsubang` | petugas | 1 |
+| `kioskulpsubang` | `kioskulpsubang` | kiosk | - |
+| `tvulpsubang` | `tvulpsubang` | tvdisplay | - |
+
+Redirect login sesuai role via `src/lib/roles.ts` (`ROLE_HOME`): admin → `/admin`, petugas → `/petugas`, kiosk → `/kiosk`, tvdisplay → `/monitor`.
 
 ### Mock Data
 
@@ -28,13 +30,13 @@ State mock di-persist ke `sessionStorage` dengan key `mockQueueState` biar gak i
 
 ```
 <AppLayout>               ← punya Navbar
-  /                       → Landing (3 card navigasi)
-  /kiosk                  → Ambil tiket
+  /                       → Redirect sesuai role (atau /login kalo belum login)
+  /kiosk                  → Ambil tiket (ProtectedRoute role=kiosk)
   /login                  → Login form
   /admin                  → AdminDashboard (ProtectedRoute role=admin)
   /petugas                → PetugasDashboard (ProtectedRoute role=petugas)
 </AppLayout>
-/monitor                  → MonitorTV (fullscreen, tanpa navbar)
+/monitor                  → MonitorTV (ProtectedRoute role=tvdisplay, fullscreen, tanpa navbar, ada tombol logout)
 /track/:id                → TrackTicket (standalone, tanpa navbar)
 ```
 

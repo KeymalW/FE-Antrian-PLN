@@ -11,7 +11,7 @@ import { logout as logoutApi } from '../services/auth'
 import { getMonitorVideos, getServerVideoVolume, setLocalVideoVolume } from '../services/settings'
 import { QueueBoard } from '../components/monitor/QueueBoard'
 import { VideoPlayer } from '../components/monitor/VideoPlayer'
-import { PLNLogo } from '../components/layout/PLNLogo'
+import { QServeLogo } from '../components/layout/QServeLogo'
 import { getServiceLabel } from '../lib/serviceTypes'
 import type { QueueTicket, ServiceType } from '../types/queue'
 
@@ -216,7 +216,7 @@ export default function MonitorTV() {
       {/* Header */}
       <div className="group flex items-center justify-between border-b border-white/10 bg-[#001134] px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <PLNLogo className="size-12" />
+          <QServeLogo className="h-12 w-auto" />
           <div>
             <h1 className="text-2xl font-bold tracking-wide text-white">
               Sistem Antrian

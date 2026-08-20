@@ -32,7 +32,6 @@ export default function App() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomeRedirect />} />
-          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
           <Route
             path="/admin"
             element={
@@ -53,6 +52,7 @@ export default function App() {
             }
           />
         </Route>
+        <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route
           path="/kiosk"
           element={
