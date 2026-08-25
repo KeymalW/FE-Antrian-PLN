@@ -13,7 +13,6 @@ import { VideoPlayer } from '../components/monitor/VideoPlayer'
 import { useSettingsStore } from '../store/settingsStore'
 import { useServicesStore } from '../store/servicesStore'
 import { getServiceLabel } from '../lib/serviceTypes'
-import { getServiceLabel } from '../lib/serviceTypes'
 import type { QueueTicket } from '../types/queue'
 
 const DUCK_RATIO = 0.3
