@@ -3,6 +3,7 @@ import type { CallRequest, QueueStats, QueueStatus, QueueTicket, ServiceType } f
 import type {
   CreateAccountInput,
   GeneralSettings,
+  KioskTextSettings,
   ServiceDefinition,
   TicketTextSettings,
   UpdateAccountInput,
@@ -417,9 +418,9 @@ function getInitialState() {
     } satisfies Record<ServiceType, number>,
     accounts: accountEntries,
     serviceCatalog: [
-      { id: 'svc-pengaduan', name: 'Pengaduan', prefix: 'G', isActive: true, showInKiosk: true },
-      { id: 'svc-pbpd', name: 'PB/PD/Migrasi', prefix: 'M', isActive: true, showInKiosk: true },
-      { id: 'svc-p2tl', name: 'P2TL', prefix: 'T', isActive: true, showInKiosk: true },
+      { id: 'svc-pengaduan', name: 'Pengaduan', code: 'pengaduan', prefix: 'G', counterNumber: 1, icon: 'megaphone', serviceGroup: 'group_a', isActive: true, showInKiosk: true },
+      { id: 'svc-pbpd', name: 'PB/PD/Migrasi', code: 'pb_pd_migrasi', prefix: 'M', counterNumber: 2, icon: 'plug-zap', serviceGroup: 'group_a', isActive: true, showInKiosk: true },
+      { id: 'svc-p2tl', name: 'P2TL', code: 'p2tl', prefix: 'T', counterNumber: 3, icon: 'wrench', serviceGroup: 'group_b', isActive: true, showInKiosk: true },
     ] satisfies ServiceDefinition[],
     generalSettings: {
       institutionName: 'PLN ULP Subang',
@@ -430,6 +431,12 @@ function getInitialState() {
       subHeaderText: 'Nomor antrian Anda',
       footerMessage: 'Terima kasih telah mengambil tiket. Silakan menunggu pemanggilan.',
     } satisfies TicketTextSettings,
+    kioskText: {
+      welcomeText: 'Selamat Datang di',
+      subtitleText: 'Silakan pilih layanan yang Anda butuhkan',
+      hintText: 'Sentuh layar untuk mencetak tiket',
+      footerText: 'PT PLN (Persero) · ULP Subang',
+    } satisfies KioskTextSettings,
     videoLinks: [] as Array<{ id: string; url: string; title: string }>,
     videoVolume: 0.2,
   }
@@ -458,8 +465,20 @@ function ensureShape<T extends ReturnType<typeof getInitialState>>(state: T): T 
   const initial = getInitialState()
   if (!Array.isArray(state.accounts)) state.accounts = initial.accounts
   if (!Array.isArray(state.serviceCatalog)) state.serviceCatalog = initial.serviceCatalog
+  // Sesi lama: isi field baru untuk baris yang belum memilikinya.
+  state.serviceCatalog = (state.serviceCatalog as Array<Record<string, unknown>>).map((row) => {
+    const legacy = initial.serviceCatalog.find((s) => s.prefix === row.prefix)
+    return {
+      ...row,
+      code: (row.code as string | undefined) ?? (legacy?.code ?? String(row.name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '_')),
+      counterNumber: (row.counterNumber as number | null | undefined) ?? (legacy?.counterNumber ?? null),
+      icon: (row.icon as string | null | undefined) ?? null,
+      serviceGroup: (row.serviceGroup as string | undefined) ?? (legacy?.serviceGroup ?? 'group_a'),
+    }
+  })
   if (!state.generalSettings) state.generalSettings = initial.generalSettings
   if (!state.ticketText) state.ticketText = initial.ticketText
+  if (!state.kioskText) state.kioskText = initial.kioskText
   if (!Array.isArray(state.videoLinks)) state.videoLinks = []
   if (typeof state.videoVolume !== 'number') state.videoVolume = initial.videoVolume
   return state
@@ -597,9 +616,8 @@ export function mockTakeTicket(serviceType: ServiceType): QueueTicket {
 }
 
 function getGroupForService(serviceType: string): string {
-  if (serviceType === 'pengaduan' || serviceType === 'pb_pd_migrasi') return 'group_a'
-  if (serviceType === 'p2tl') return 'group_b'
-  return 'group_a'
+  const service = mockState.serviceCatalog.find((s) => s.code === serviceType)
+  return (service?.serviceGroup as string | undefined) ?? 'group_a'
 }
 
 export function mockCallQueue(payload: CallRequest): QueueTicket {
@@ -645,6 +663,15 @@ export function mockCompleteQueue(queueId: string): QueueTicket {
     status: 'completed',
     completedAt: new Date().toISOString(),
   }))
+}
+
+export function mockRecallQueue(queueId: string): QueueTicket {
+  const ticket = mockState.tickets.find((t) => t.id === queueId)
+  if (!ticket) throw new Error('Tiket tidak ditemukan')
+  if (ticket.status !== 'called' && ticket.status !== 'serving') {
+    throw new Error('Hanya antrian aktif yang bisa dipanggil ulang')
+  }
+  return clone(ticket)
 }
 
 export function mockGetQueueStats(): QueueStats {
@@ -793,23 +820,37 @@ export function mockGetServices(): ServiceDefinition[] {
 
 export function mockCreateService(input: {
   name: string
+  code: string
   prefix: string
+  counterNumber: number | null
+  icon: string | null
+  serviceGroup: 'group_a' | 'group_b'
   isActive: boolean
   showInKiosk: boolean
 }): ServiceDefinition {
   const name = input.name.trim()
   const prefix = input.prefix.trim().toUpperCase()
-  if (!name || !prefix) throw new Error('Nama dan prefix layanan wajib diisi')
+  const code = input.code.trim().toLowerCase()
+  if (!name || !prefix || !code) throw new Error('Nama, kode, dan prefix layanan wajib diisi')
 
   const prefixTaken = mockState.serviceCatalog.some(
     (service) => service.prefix.toUpperCase() === prefix,
   )
   if (prefixTaken) throw new Error(`Prefix "${prefix}" sudah digunakan`)
 
+  const codeTaken = mockState.serviceCatalog.some(
+    (service) => service.code.toLowerCase() === code,
+  )
+  if (codeTaken) throw new Error(`Kode "${code}" sudah digunakan`)
+
   const service: ServiceDefinition = {
     id: `svc-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     name,
+    code,
     prefix,
+    counterNumber: input.counterNumber,
+    icon: input.icon,
+    serviceGroup: input.serviceGroup,
     isActive: input.isActive,
     showInKiosk: input.showInKiosk,
   }
@@ -820,7 +861,7 @@ export function mockCreateService(input: {
 
 export function mockUpdateService(
   id: string,
-  input: Partial<Pick<ServiceDefinition, 'name' | 'prefix' | 'isActive' | 'showInKiosk'>>,
+  input: Partial<Pick<ServiceDefinition, 'name' | 'code' | 'prefix' | 'counterNumber' | 'icon' | 'serviceGroup' | 'isActive' | 'showInKiosk'>>,
 ): ServiceDefinition {
   const service = mockState.serviceCatalog.find((item) => item.id === id)
   if (!service) throw new Error('Layanan tidak ditemukan')
@@ -833,7 +874,18 @@ export function mockUpdateService(
     if (taken) throw new Error(`Prefix "${prefix}" sudah digunakan`)
     service.prefix = prefix
   }
+  if (input.code != null) {
+    const code = input.code.trim().toLowerCase()
+    const taken = mockState.serviceCatalog.some(
+      (item) => item.id !== id && item.code.toLowerCase() === code,
+    )
+    if (taken) throw new Error(`Kode "${code}" sudah digunakan`)
+    service.code = code
+  }
   if (input.name != null) service.name = input.name.trim()
+  if (input.counterNumber !== undefined) service.counterNumber = input.counterNumber
+  if (input.icon !== undefined) service.icon = input.icon
+  if (input.serviceGroup != null) service.serviceGroup = input.serviceGroup
   if (input.isActive != null) service.isActive = input.isActive
   if (input.showInKiosk != null) service.showInKiosk = input.showInKiosk
 
@@ -869,6 +921,18 @@ export function mockUpdateTicketText(patch: Partial<TicketTextSettings>): Ticket
   mockState.ticketText = { ...mockState.ticketText, ...patch }
   saveState()
   return { ...mockState.ticketText }
+}
+
+/* ============================ TEKS KIOSK ========================== */
+
+export function mockGetKioskText(): KioskTextSettings {
+  return { ...mockState.kioskText }
+}
+
+export function mockUpdateKioskText(patch: Partial<KioskTextSettings>): KioskTextSettings {
+  mockState.kioskText = { ...mockState.kioskText, ...patch }
+  saveState()
+  return { ...mockState.kioskText }
 }
 
 /* =========================== MEDIA TV ============================= */

@@ -11,14 +11,17 @@ import {
   callQueue,
   skipQueue,
   completeQueue,
+  recallQueue,
   clearQueueHistory,
 } from '../services/queue'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Spinner } from '../components/ui/spinner'
-import { ScrollArea } from '../components/ui/scroll-area'
+import { PageHeader } from '../components/admin/PageHeader'
+import { EmptyState } from '../components/admin/EmptyState'
+import { StatCard } from '../components/admin/StatCard'
 import {
   Dialog,
   DialogTrigger,
@@ -30,7 +33,20 @@ import {
   DialogClose,
 } from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus, ServiceType } from '../types/queue'
-import { ChevronDownIcon, ChevronUpIcon, BarChart3Icon, Trash2Icon, KeyboardIcon, VolumeIcon } from 'lucide-react'
+import {
+  ActivityIcon,
+  BellRingIcon,
+  CheckCircle2Icon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClockIcon,
+  HistoryIcon,
+  InboxIcon,
+  KeyboardIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  UserCheckIcon,
+} from 'lucide-react'
 import {
   getServiceLabel,
   getServiceSortScore,
@@ -41,6 +57,7 @@ import {
   type ServiceGroup,
 } from '../lib/serviceTypes'
 import { buildWeeklyCounterChartData, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
+import { formatDateId, formatDateTimeId, formatTimeId, getWeekRangeLabel } from '../lib/datetime'
 
 const ServiceSummaryChart = lazy(() =>
   import('../components/dashboard/ServiceSummaryChart').then((module) => ({
@@ -54,23 +71,8 @@ function QueueStatusBadge({ status }: { status: QueueStatus }) {
   return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
 }
 
-function CardSkeleton() {
-  return (
-    <Card size="sm">
-      <CardContent className="text-center">
-        <Skeleton className="mx-auto mb-2 h-5 w-1/3" />
-        <Skeleton className="mx-auto h-4 w-2/3" />
-      </CardContent>
-    </Card>
-  )
-}
-
-function formatClock(value: string | null) {
-  if (!value) return '--:--'
-  return new Date(value).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function ChartSkeleton() {
+  return <Skeleton className="h-[26rem] w-full rounded-xl" />
 }
 
 function formatElapsed(start: string | null, now: Date) {
@@ -132,7 +134,7 @@ function ActiveCallCard({
 
   if (!ticket) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center">
+      <div className="rounded-xl border border-dashed border-border p-4 text-center">
         <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
         <div className="mt-1 text-sm text-muted-foreground">Tidak ada</div>
       </div>
@@ -140,17 +142,22 @@ function ActiveCallCard({
   }
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-center">
+    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-center ring-1 ring-blue-100">
       <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
-      <div className="mt-2 text-3xl font-bold text-green-600">{ticket.queueNumber}</div>
+      <div className="mt-2 text-4xl font-semibold tracking-tight text-emerald-600 tabular-nums">
+        {ticket.queueNumber}
+      </div>
       <div className="mt-1 text-sm capitalize text-muted-foreground">
         {getServiceLabel(ticket.serviceType)}
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
         Loket #{ticket.counterNumber}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        {formatClock(ticket.calledAt)} • {formatElapsed(ticket.calledAt, now)}
+      <div className="mt-1 text-xs tabular-nums text-muted-foreground">
+        {formatDateTimeId(ticket.calledAt)}
+      </div>
+      <div className="mt-0.5 text-xs font-medium text-foreground tabular-nums">
+        Berjalan {formatElapsed(ticket.calledAt, now)}
       </div>
       <div className="mt-3 flex justify-center gap-2">
         <Button
@@ -163,15 +170,17 @@ function ActiveCallCard({
         </Button>
         <Button
           size="sm"
-          variant="secondary"
+          variant="outline"
           onClick={() => onRecall(ticket)}
+          disabled={actionLoading === ticket.id}
         >
+          {actionLoading === ticket.id && <Spinner data-icon="inline-start" />}
           Panggil Ulang
         </Button>
         <Button
           size="sm"
-          variant="secondary"
-          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
+          variant="ghost"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={() => onSkip(ticket.id)}
         >
           Skip
@@ -184,7 +193,7 @@ function ActiveCallCard({
 export default function PetugasDashboard() {
   const { user } = useAuthStore()
   const { queueList, setQueueList, stats, setStats, activeCalls, setActiveCall, counterStatus, setCounterStatus } = useQueueStore()
-  const { playBeep, unlockAudio, announceQueueCall } = useQueueSound()
+  const { playBeep, unlockAudio } = useQueueSound()
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
@@ -245,7 +254,6 @@ export default function PetugasDashboard() {
       if (payload.counterNumber === counterNumber) {
         const group = getGroupForServiceType(payload.serviceType as ServiceType)
         setActiveCall(group, payload)
-        announceQueueCall(payload)
       }
       fetchData()
     },
@@ -289,7 +297,6 @@ export default function PetugasDashboard() {
       const result = await callQueue({ queueId, counterNumber })
       const group = getGroupForServiceType(result.serviceType as ServiceType)
       setActiveCall(group, result)
-      announceQueueCall(result)
       await fetchData()
     } catch {
       playBeep()
@@ -297,7 +304,7 @@ export default function PetugasDashboard() {
     } finally {
       setActionLoading(null)
     }
-  }, [isCounterPaused, playBeep, queueList, activeCalls, setActionLoading, counterNumber, setActiveCall, announceQueueCall, fetchData])
+  }, [isCounterPaused, playBeep, queueList, activeCalls, setActionLoading, counterNumber, setActiveCall, fetchData])
 
   const handleSkip = useCallback(async (queueId: string) => {
     setActionLoading(queueId)
@@ -323,9 +330,19 @@ export default function PetugasDashboard() {
     }
   }, [setActionLoading, fetchData])
 
-  const handleRecall = useCallback((ticket: QueueTicket) => {
-    announceQueueCall(ticket)
-  }, [announceQueueCall])
+  const handleRecall = useCallback(async (ticket: QueueTicket) => {
+    setActionLoading(ticket.id)
+    try {
+      await unlockAudio()
+      // Panggil ulang disiarkan lewat server agar suara keluar di TV display.
+      await recallQueue(ticket.id)
+    } catch {
+      playBeep()
+      toast.error('Gagal memanggil ulang antrian')
+    } finally {
+      setActionLoading(null)
+    }
+  }, [playBeep, unlockAudio])
 
   const handleClearHistory = async () => {
     setActionLoading('clear-history')
@@ -340,12 +357,6 @@ export default function PetugasDashboard() {
   }
 
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
-  const [audioUnlocked, setAudioUnlocked] = useState(false)
-
-  const handleUnlockAudio = async () => {
-    await unlockAudio()
-    setAudioUnlocked(true)
-  }
 
   const findNextCallable = useCallback(() => {
     for (const ticket of queueList) {
@@ -429,73 +440,69 @@ export default function PetugasDashboard() {
   ])
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Audio Unlock Overlay */}
-      {!audioUnlocked && (
-        <div
-          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={handleUnlockAudio}
-        >
-          <div className="flex flex-col items-center gap-6 rounded-2xl bg-white px-12 py-10 shadow-2xl">
-            <div className="rounded-full bg-pln-cyan/20 p-5">
-              <VolumeIcon className="size-12 text-pln-cyan" />
-            </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900">Aktifkan Suara</h2>
-              <p className="mt-2 text-base text-gray-500">
-                Klik di mana saja untuk mengaktifkan suara antrian
-              </p>
-            </div>
-            <div className="animate-pulse text-sm text-gray-400">
-              Ketuk layar untuk melanjutkan
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard Petugas</h1>
-          <p className="text-sm text-muted-foreground">
-            Loket #{counterNumber} — {user?.name}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge
-            className={isCounterPaused ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}
-          >
-            {isCounterPaused ? 'Loket Istirahat' : 'Loket Aktif'}
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCounterStatus(counterNumber, !isCounterPaused)}
-          >
-            {isCounterPaused ? 'Aktifkan Loket' : 'Istirahat Loket'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setShowShortcutHelp(true)}
-            title="Pintasan Keyboard (?)"
-          >
-            <KeyboardIcon className="size-4" />
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <PageHeader
+        title="Dashboard Petugas"
+        description={`Loket #${counterNumber} — ${user?.name ?? ''}`}
+        actions={
+          <>
+            <Badge
+              className={
+                isCounterPaused
+                  ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                  : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+              }
+            >
+              {isCounterPaused ? 'Loket Istirahat' : 'Loket Aktif'}
+            </Badge>
+            <Button variant="outline" onClick={() => setCounterStatus(counterNumber, !isCounterPaused)}>
+              {isCounterPaused ? 'Aktifkan Loket' : 'Istirahat Loket'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setShowShortcutHelp(true)}
+              title="Pintasan Keyboard (?)"
+            >
+              <KeyboardIcon />
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {stats
-          ? <StatCards stats={stats} />
-          : Array.from({ length: 5 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-      </div>
+      <section aria-label="Statistik antrian">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {stats ? (
+            <>
+              <StatCard label="Total" value={stats.total} tone="neutral" icon={ActivityIcon} />
+              <StatCard label="Menunggu" value={stats.waiting} tone="amber" icon={ClockIcon} />
+              <StatCard label="Dipanggil" value={stats.called} tone="blue" icon={BellRingIcon} />
+              <StatCard label="Dilayani" value={stats.serving} tone="emerald" icon={UserCheckIcon} />
+              <StatCard label="Selesai" value={stats.completed} tone="green" icon={CheckCircle2Icon} />
+            </>
+          ) : (
+            <>
+              <StatCard label="Total" value={0} tone="neutral" icon={ActivityIcon} loading />
+              <StatCard label="Menunggu" value={0} tone="amber" icon={ClockIcon} loading />
+              <StatCard label="Dipanggil" value={0} tone="blue" icon={BellRingIcon} loading />
+              <StatCard label="Dilayani" value={0} tone="emerald" icon={UserCheckIcon} loading />
+              <StatCard label="Selesai" value={0} tone="green" icon={CheckCircle2Icon} loading />
+            </>
+          )}
+        </div>
+      </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader>
-              <CardTitle>Antrian Menunggu ({queueList.length})</CardTitle>
+            <CardHeader className="[.border-b]:pb-4">
+              <div>
+                <CardTitle>Antrian Menunggu</CardTitle>
+                <CardDescription>{queueList.length} tiket dalam antrean</CardDescription>
+              </div>
+              <Badge variant="secondary" className="tabular-nums">
+                {queueList.length}
+              </Badge>
             </CardHeader>
             <CardContent>
               {isCounterPaused && (
@@ -511,84 +518,80 @@ export default function PetugasDashboard() {
               )}
 
               {loading ? (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <CardSkeleton key={i} />
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
                   ))}
                 </div>
               ) : queueList.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground">
-                  <p className="text-lg font-medium">Tidak ada antrian</p>
-                  <p className="text-sm">Semua antrian sudah selesai</p>
-                </div>
+                <EmptyState
+                  icon={InboxIcon}
+                  title="Tidak ada antrian"
+                  description="Semua antrian sudah selesai."
+                  compact
+                />
               ) : (
-                <ScrollArea className="h-[16rem] pr-3">
-                  {queueList.map((q) => {
-                    const ticketGroup = getGroupForServiceType(q.serviceType as ServiceType)
-                    const isBlocked = !canCallServiceType(activeCalls, q.serviceType as ServiceType)
+                <div className="max-h-72 overflow-auto">
+                  <div className="min-w-[560px]">
+                    {queueList.map((q) => {
+                      const ticketGroup = getGroupForServiceType(q.serviceType as ServiceType)
+                      const isBlocked = !canCallServiceType(activeCalls, q.serviceType as ServiceType)
 
-                    return (
-                      <div
-                        key={q.id}
-                        className="grid gap-3 border-b py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-                      >
-                        <div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
-                          <span className="text-lg font-bold tabular-nums text-primary">
-                            {q.queueNumber}
-                          </span>
-                          <div className="min-w-0 flex flex-col">
-                            <span className="truncate text-sm capitalize text-muted-foreground">
-                              {getServiceLabel(q.serviceType)}
+                      return (
+                        <div
+                          key={q.id}
+                          className="flex items-center justify-between gap-3 border-b border-border/70 py-3 transition-colors last:border-b-0 hover:bg-muted/40"
+                        >
+                          <div className="grid min-w-0 flex-1 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
+                            <span className="text-lg font-semibold tabular-nums text-foreground">
+                              {q.queueNumber}
                             </span>
-                            <span className="text-xs text-muted-foreground">
-                              Dicetak {formatClock(q.createdAt)}
-                            </span>
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate text-sm capitalize text-muted-foreground">
+                                {getServiceLabel(q.serviceType)}
+                              </span>
+                              <span className="truncate text-[11px] tabular-nums text-muted-foreground">
+                                Dicetak {formatDateTimeId(q.createdAt)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <QueueStatusBadge status={q.status} />
+                              {isBlocked && (
+                                <Badge className="bg-amber-100 text-amber-700 text-[10px]">
+                                  {SERVICE_GROUP_LABELS[ticketGroup]}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <QueueStatusBadge status={q.status} />
-                            {isBlocked && (
-                              <Badge className="bg-amber-100 text-amber-700 text-[10px]">
-                                {SERVICE_GROUP_LABELS[ticketGroup]}
-                              </Badge>
-                            )}
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleCall(q.id)}
+                              disabled={actionLoading === q.id || isCounterPaused || isBlocked}
+                            >
+                              {actionLoading === q.id && <Spinner data-icon="inline-start" />}
+                              Panggil
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleSkip(q.id)}>
+                              Skip
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 md:justify-end">
-                          <Button
-                            size="sm"
-                            onClick={() => handleCall(q.id)}
-                            disabled={actionLoading === q.id || isCounterPaused || isBlocked}
-                          >
-                            {actionLoading === q.id && <Spinner data-icon="inline-start" />}
-                            Panggil
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="bg-gray-100 text-gray-800 hover:bg-gray-200"
-                            onClick={() => handleSkip(q.id)}
-                          >
-                            Skip
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </ScrollArea>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="mt-6 rounded-2xl shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <Card>
+            <CardHeader className="flex-row items-start justify-between gap-4 space-y-0 [.border-b]:pb-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3Icon className="size-5 text-pln-cyan" />
-                  Perbandingan Loket Mingguan
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Distribusi tiket per loket untuk hari kerja Senin sampai Jumat.
-                </p>
+                <CardTitle>Perbandingan Loket Mingguan</CardTitle>
+                <CardDescription>
+                  Minggu ini: {getWeekRangeLabel()} (Senin–Jumat)
+                </CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -602,9 +605,9 @@ export default function PetugasDashboard() {
             {showServiceSummary && (
               <CardContent className="pt-0">
                 {loading ? (
-                  <CardSkeleton />
+                  <ChartSkeleton />
                 ) : (
-                  <Suspense fallback={<CardSkeleton />}>
+                  <Suspense fallback={<ChartSkeleton />}>
                     <ServiceSummaryChart rows={serviceSummary} embedded />
                   </Suspense>
                 )}
@@ -613,10 +616,13 @@ export default function PetugasDashboard() {
           </Card>
         </div>
 
-        <div>
+        <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Sedang Dilayani</CardTitle>
+            <CardHeader className="[.border-b]:pb-4">
+              <div>
+                <CardTitle>Sedang Dilayani</CardTitle>
+                <CardDescription>Antrian aktif per grup layanan.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {ALL_GROUPS.map((group) => (
@@ -634,19 +640,22 @@ export default function PetugasDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="mt-4">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Antrian Selesai</CardTitle>
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 [.border-b]:pb-4">
+              <div>
+                <CardTitle>Antrian Selesai</CardTitle>
+                <CardDescription>10 tiket terakhir.</CardDescription>
+              </div>
               {recentCompleted.length > 0 && (
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <Trash2Icon className="size-4" />
-                      <span className="ml-2 text-xs">Clear</span>
+                      <Trash2Icon />
+                      Clear
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -674,46 +683,51 @@ export default function PetugasDashboard() {
             </CardHeader>
             <CardContent>
               {recentCompleted.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>Belum ada riwayat selesai</p>
-                </div>
+                <EmptyState
+                  icon={HistoryIcon}
+                  title="Belum ada riwayat selesai"
+                  compact
+                />
               ) : (
-                <ScrollArea className="h-[4.5rem] pr-3">
-                  <div className="space-y-3">
-                    {recentCompleted.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="flex items-center justify-between rounded-lg border px-4 py-3"
-                      >
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            {ticket.queueNumber}
-                          </div>
-                          <div className="text-xs capitalize text-muted-foreground">
-                            {getServiceLabel(ticket.serviceType)} • Selesai {formatClock(ticket.completedAt)}
-                          </div>
+                <div className="max-h-[11rem] space-y-2 overflow-y-auto pr-1">
+                  {recentCompleted.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border px-3.5 py-2.5 transition-colors hover:bg-muted/40"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold tabular-nums text-foreground">
+                          {ticket.queueNumber}
                         </div>
-                        <Badge className="bg-green-100 text-green-800">Selesai</Badge>
+                        <div className="truncate text-[11px] capitalize text-muted-foreground">
+                          {getServiceLabel(ticket.serviceType)} • Selesai{' '}
+                          <span className="tabular-nums">{formatDateId(ticket.completedAt)}</span>{' '}
+                          <span className="tabular-nums">{formatTimeId(ticket.completedAt)}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                      <Badge className="shrink-0 bg-green-50 text-green-700 ring-1 ring-green-200">
+                        Selesai
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="mt-4">
-            <CardHeader>
+          <Card>
+            <CardHeader className="[.border-b]:pb-4">
               <CardTitle>Aksi Cepat</CardTitle>
+              <CardDescription>Segarkan data tanpa menunggu notifikasi.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                variant="secondary"
+                variant="outline"
                 className="w-full"
                 onClick={() => fetchData()}
                 disabled={loading}
               >
-                {loading && <Spinner data-icon="inline-start" />}
+                <RefreshCwIcon className={loading ? 'animate-spin' : ''} data-icon="inline-start" />
                 {loading ? 'Memuat...' : 'Refresh Data'}
               </Button>
               <p className="text-center text-[11px] text-muted-foreground">
@@ -757,28 +771,5 @@ export default function PetugasDashboard() {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-function StatCards({ stats }: { stats: QueueStats }) {
-  const items: { label: string; value: number; color: string }[] = [
-    { label: 'Total', value: stats.total, color: 'text-foreground' },
-    { label: 'Menunggu', value: stats.waiting, color: 'text-yellow-600' },
-    { label: 'Dipanggil', value: stats.called, color: 'text-blue-600' },
-    { label: 'Dilayani', value: stats.serving, color: 'text-green-600' },
-    { label: 'Selesai', value: stats.completed, color: 'text-green-700' },
-  ]
-
-  return (
-    <>
-      {items.map((item) => (
-        <Card key={item.label} size="sm">
-          <CardContent className="text-center">
-            <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
-            <div className="text-xs text-muted-foreground">{item.label}</div>
-          </CardContent>
-        </Card>
-      ))}
-    </>
   )
 }

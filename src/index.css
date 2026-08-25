@@ -24,6 +24,18 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-display: 'Poppins', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+/* Brand palette — runtime vars agar bisa di-override per-scope (mis. .admin-theme) */
+@theme {
   --color-pln-yellow: #efe62f;
   --color-pln-teal: #093b9e;
   --color-pln-cyan: #22d3ee;
@@ -38,14 +50,6 @@
   --color-pln-200: #bcd2ff;
   --color-pln-100: #dce8ff;
   --color-pln-50: #f0f5ff;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
-  --font-display: 'Poppins', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
 }
 
 :root {
@@ -229,22 +233,20 @@ dialog::backdrop {
 @keyframes dialog-content-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes dialog-content-out {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
   }
 }
 
@@ -318,4 +320,56 @@ dialog::backdrop {
 
 .animate-page-in {
   animation: page-in 0.25s ease-out forwards;
+}
+
+/*
+ * Admin theme — neutral enterprise palette (white / soft gray / dark charcoal).
+ * Scope: hanya berlaku di dalam wrapper .admin-theme (AdminLayout).
+ */
+.admin-theme {
+  --radius: 0.7rem;
+  --background: oklch(0.977 0.003 247);
+  --foreground: oklch(0.24 0.014 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.014 258);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.014 258);
+  --primary: oklch(0.27 0.02 258);
+  --primary-foreground: oklch(0.985 0.001 248);
+  --secondary: oklch(0.955 0.004 252);
+  --secondary-foreground: oklch(0.3 0.02 258);
+  --muted: oklch(0.961 0.004 252);
+  --muted-foreground: oklch(0.52 0.015 256);
+  --accent: oklch(0.949 0.005 252);
+  --accent-foreground: oklch(0.28 0.02 258);
+  --destructive: oklch(0.55 0.21 27);
+  --border: oklch(0.91 0.005 254);
+  --input: oklch(0.91 0.005 254);
+  --ring: oklch(0.53 0.05 256);
+  --chart-1: oklch(0.45 0.18 260);
+  --chart-2: oklch(0.7 0.14 70);
+  --chart-3: oklch(0.55 0.15 150);
+  --chart-4: oklch(0.62 0.11 245);
+  --chart-5: oklch(0.35 0.03 258);
+  /* Alias warna lama yang dipakai komponen bersama → netral hanya di area admin */
+  --color-pln-teal: oklch(0.27 0.02 258);
+  --color-pln-cyan: oklch(0.6 0.11 245);
+}
+
+.admin-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-theme ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-theme ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.admin-theme ::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }

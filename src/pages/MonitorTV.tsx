@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MaximizeIcon, MinimizeIcon, Volume2Icon, VolumeXIcon, LogOutIcon } from 'lucide-react'
@@ -9,34 +9,28 @@ import { useQueueSound } from '../hooks/useQueueSound'
 import { getQueueList } from '../services/queue'
 import { logout as logoutApi } from '../services/auth'
 import { getMonitorVideos, getServerVideoVolume, setLocalVideoVolume } from '../services/settings'
-import { QueueBoard } from '../components/monitor/QueueBoard'
 import { VideoPlayer } from '../components/monitor/VideoPlayer'
-import { QServeLogo } from '../components/layout/QServeLogo'
+import { useSettingsStore } from '../store/settingsStore'
+import { useServicesStore } from '../store/servicesStore'
 import { getServiceLabel } from '../lib/serviceTypes'
-import type { QueueTicket, ServiceType } from '../types/queue'
-
-const SERVICE_TYPES: ServiceType[] = ['pengaduan', 'pb_pd_migrasi', 'p2tl']
+import { getServiceLabel } from '../lib/serviceTypes'
+import type { QueueTicket } from '../types/queue'
 
 const DUCK_RATIO = 0.3
 const DUCK_FLOOR = 0.1
 const DUCK_DURATION_MS = 12000
 
-const COUNTER_TO_SERVICE: Record<number, ServiceType> = {
-  1: 'pengaduan',
-  2: 'pb_pd_migrasi',
-  3: 'p2tl',
-}
-
 export default function MonitorTV() {
   const { setQueueList, counterStatus } = useQueueStore()
   const { logout } = useAuthStore()
   const navigate = useNavigate()
-  const { unlockAudio } = useQueueSound({
+  const { general, fetchGeneral } = useSettingsStore()
+  const { services, fetchServices } = useServicesStore()
+  const { unlockAudio, announceQueueCall } = useQueueSound({
     ttsRate: 0.92,
     ttsPitch: 1,
     ttsVolume: 1,
   })
-  const [waitingList, setWaitingList] = useState<QueueTicket[]>([])
   const [lastCalledByType, setLastCalledByType] = useState<Record<string, QueueTicket | null>>({})
   const [activeCall, setActiveCall] = useState<QueueTicket | null>(null)
   const [activeCallPulse, setActiveCallPulse] = useState(false)
@@ -50,6 +44,7 @@ export default function MonitorTV() {
   const [videoIndex, setVideoIndex] = useState(0)
   const [videoCount, setVideoCount] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
   const [videoMuted, setVideoMuted] = useState(true)
   const [videoVolume, setVideoVolume] = useState(0.2)
   const [videoDucking, setVideoDucking] = useState(false)
@@ -65,11 +60,37 @@ export default function MonitorTV() {
     duckTimerRef.current = setTimeout(() => setVideoDucking(false), DUCK_DURATION_MS)
   }, [])
 
+  const startCallFlash = useCallback((payload: QueueTicket) => {
+    if (pulseRef.current) clearTimeout(pulseRef.current)
+    setActiveCall(payload)
+    setActiveCallPulse(true)
+    setCallCount((c) => c + 1)
+    setJustCalledServiceType(payload.serviceType)
+    pulseRef.current = setTimeout(() => {
+      setActiveCallPulse(false)
+      setJustCalledServiceType(null)
+    }, 6000)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (duckTimerRef.current) clearTimeout(duckTimerRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    void fetchGeneral()
+    void fetchServices()
+  }, [fetchGeneral, fetchServices])
+
+  // Kartu TV: layanan aktif yang dipasangkan ke sebuah loket, urut nomor loket.
+  const tvCards = useMemo(
+    () =>
+      services
+        .filter((s) => s.isActive && s.counterNumber != null)
+        .sort((a, b) => (a.counterNumber ?? 0) - (b.counterNumber ?? 0)),
+    [services],
+  )
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -80,6 +101,7 @@ export default function MonitorTV() {
   useEffect(() => {
     const unlock = () => {
       unlockAudio()
+      setAudioUnlocked(true)
       document.removeEventListener('pointerdown', unlock)
     }
     document.addEventListener('pointerdown', unlock)
@@ -88,6 +110,7 @@ export default function MonitorTV() {
 
   const toggleFullscreen = async () => {
     await unlockAudio()
+    setAudioUnlocked(true)
     if (document.fullscreenElement) {
       document.exitFullscreen()
     } else {
@@ -145,7 +168,6 @@ export default function MonitorTV() {
       getQueueList({ status: 'serving' }),
     ])
     if (id !== fetchIdRef.current) return
-    setWaitingList(waiting)
     setQueueList(waiting)
 
     const byType: Record<string, QueueTicket | null> = {}
@@ -173,18 +195,16 @@ export default function MonitorTV() {
         [payload.serviceType]: payload,
       }))
 
-      if (pulseRef.current) clearTimeout(pulseRef.current)
-      setActiveCall(payload)
-      setActiveCallPulse(true)
-      setCallCount((c) => c + 1)
-      setJustCalledServiceType(payload.serviceType)
-      pulseRef.current = setTimeout(() => {
-        setActiveCallPulse(false)
-        setJustCalledServiceType(null)
-      }, 6000)
-
+      startCallFlash(payload)
+      announceQueueCall(payload)
       triggerVideoDuck()
       fetchAll()
+    },
+    onQueueRecall: (msg) => {
+      const payload = msg.payload as QueueTicket
+      startCallFlash(payload)
+      announceQueueCall(payload)
+      triggerVideoDuck()
     },
     onQueueUpdate: () => { fetchAll() },
     onQueueComplete: () => { fetchAll() },
@@ -213,15 +233,54 @@ export default function MonitorTV() {
 
   return (
     <div className="flex h-screen flex-col bg-white text-gray-900">
+      {/* Overlay: sentuh sekali untuk mengaktifkan audio pemanggilan */}
+      {!audioUnlocked && (
+        <div
+          className="fixed inset-0 z-40 flex cursor-pointer flex-col items-center justify-center gap-6 bg-[#030b24]/95 backdrop-blur-sm"
+          onClick={() => {
+            void unlockAudio()
+            setAudioUnlocked(true)
+          }}
+        >
+          <div className="flex size-20 items-center justify-center rounded-full bg-white/10 text-pln-cyan">
+            <VolumeXIcon className="size-10" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold tracking-wide text-white">
+              Sentuh Layar untuk Mengaktifkan Suara
+            </h2>
+            <p className="mt-2 text-base text-white/70">
+              Suara pemanggilan antrian akan keluar dari layar ini
+            </p>
+          </div>
+          <div className="animate-pulse text-sm text-white/50">
+            Ketuk di mana saja untuk melanjutkan
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="group flex items-center justify-between border-b border-white/10 bg-[#001134] px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <QServeLogo className="h-12 w-auto" />
+          <img
+            key={general?.logoUrl ?? 'default'}
+            src={general?.logoUrl?.trim() || '/assets/Logo QServe.png'}
+            alt="Logo instansi"
+            className="h-12 w-auto max-w-[12rem] object-contain"
+            onError={(e) => {
+              const img = e.currentTarget
+              if (img.dataset.fallback) return
+              img.dataset.fallback = '1'
+              img.src = '/assets/Logo QServe.png'
+            }}
+          />
           <div>
             <h1 className="text-2xl font-bold tracking-wide text-white">
               Sistem Antrian
             </h1>
-            <p className="text-sm text-white">PT PLN (Persero)</p>
+            <p className="text-sm text-white">
+              {general?.institutionName?.trim() || 'PT PLN (Persero)'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 opacity-0 transition-all duration-300 group-hover:opacity-100">
@@ -346,64 +405,53 @@ export default function MonitorTV() {
         </div>
       </div>
 
-      {/* Bottom Section: Counter Cards + QueueBoard */}
-      <div className="flex flex-[4] min-h-0 gap-4 px-6 pb-4 pt-2">
-        {/* Counter Cards */}
-        <div className="flex flex-[3] gap-3">
-          {SERVICE_TYPES.map((serviceType) => {
-            const counter = Object.entries(COUNTER_TO_SERVICE).find(
-              ([, s]) => s === serviceType,
-            )?.[0]
-            const isPaused = counter ? (counterStatus[Number(counter)] ?? false) : false
-            const ticket = lastCalledByType[serviceType]
-            const isPulsing = justCalledServiceType === serviceType
-              return (
-              <div
-                key={serviceType}
-                className={`flex flex-1 flex-col items-center justify-center rounded-2xl p-4 ring-1 backdrop-blur transition-all duration-500 ${
-                  isPaused
-                    ? 'bg-red-950/40 ring-red-500/30'
-                    : isPulsing
-                      ? 'bg-[#001134] ring-pln-cyan/50 animate-pulse'
-                      : 'bg-[#001134] ring-pln-cyan/10'
-                }`}
-              >
-                <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-pln-cyan/80">
-                  <div
-                    className={`size-2.5 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`}
-                  />
-                  {getServiceLabel(serviceType)}
-                </div>
+      {/* Bottom Section: Counter Cards (dinamis dari Kelola Layanan) */}
+      <div className="grid flex-[4] min-h-0 grid-cols-3 auto-rows-fr gap-3 overflow-hidden px-6 pb-4 pt-2">
+        {tvCards.map((service) => {
+          const isPaused = counterStatus[service.counterNumber ?? -1] ?? false
+          const ticket = lastCalledByType[service.code]
+          const isPulsing = justCalledServiceType === service.code
+          return (
+            <div
+              key={service.id}
+              className={`flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-2xl p-4 ring-1 backdrop-blur transition-all duration-500 ${
+                isPaused
+                  ? 'bg-red-950/40 ring-red-500/30'
+                  : isPulsing
+                    ? 'bg-[#001134] ring-pln-cyan/50 animate-pulse'
+                    : 'bg-[#001134] ring-pln-cyan/10'
+              }`}
+            >
+              <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-pln-cyan/80">
+                <div
+                  className={`size-2.5 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`}
+                />
+                {getServiceLabel(service.code)}
+              </div>
 
-                {isPaused ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-full border-2 border-red-500/50 px-6 py-1.5 text-base font-bold tracking-wider text-red-400">
-                      ISTIRAHAT
-                    </div>
-                    <div className="text-4xl font-bold tracking-tight text-gray-600">
-                      ---
-                    </div>
+              {isPaused ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="rounded-full border-2 border-red-500/50 px-6 py-1.5 text-base font-bold tracking-wider text-red-400">
+                    ISTIRAHAT
                   </div>
-                ) : ticket ? (
-                  <>
-                    <div className="text-5xl font-bold tracking-tight text-pln-cyan">
-                      {ticket.queueNumber}
-                    </div>
-                  </>
-                ) : (
                   <div className="text-4xl font-bold tracking-tight text-gray-600">
                     ---
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* QueueBoard Compact */}
-        <div className="flex flex-[2] rounded-2xl bg-[#001134] p-4 ring-1 ring-pln-cyan/10 backdrop-blur">
-          <QueueBoard waitingList={waitingList} />
-        </div>
+                </div>
+              ) : ticket ? (
+                <>
+                  <div className="text-5xl font-bold tracking-tight text-pln-cyan">
+                    {ticket.queueNumber}
+                  </div>
+                </>
+              ) : (
+                <div className="text-4xl font-bold tracking-tight text-gray-600">
+                  ---
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Marquee */}

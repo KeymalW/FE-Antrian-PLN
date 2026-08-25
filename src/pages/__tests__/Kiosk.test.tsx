@@ -44,16 +44,16 @@ describe('Kiosk', () => {
   it('renders all 3 service buttons', async () => {
     renderKiosk()
     await waitFor(() => {
-      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
+      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
     })
-    expect(screen.getByText('PB/PD/migrasi')).toBeInTheDocument()
+    expect(screen.getByText('PB/PD/Migrasi')).toBeInTheDocument()
     expect(screen.getByText('P2TL')).toBeInTheDocument()
   })
 
   it('renders queue status badge on each card', async () => {
     renderKiosk()
     await waitFor(() => {
-      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
+      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
     })
     const badges = screen.getAllByText('Belum Ada Antrian')
     expect(badges).toHaveLength(3)
@@ -64,10 +64,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
+      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
+    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
     await user.click(pengaduanBtn)
 
     await waitFor(() => {
@@ -83,10 +83,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
+      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
+    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
     await user.click(pengaduanBtn)
 
     await waitFor(() => {
@@ -105,10 +105,10 @@ describe('Kiosk', () => {
     renderKiosk()
 
     await waitFor(() => {
-      expect(screen.getByText('PENGADUAN')).toBeInTheDocument()
+      expect(screen.getByText('Pengaduan')).toBeInTheDocument()
     })
 
-    const pengaduanBtn = screen.getByText('PENGADUAN').closest('button')!
+    const pengaduanBtn = screen.getByText('Pengaduan').closest('button')!
     user.click(pengaduanBtn)
 
     await waitFor(() => {

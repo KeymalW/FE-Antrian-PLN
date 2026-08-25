@@ -8,11 +8,13 @@ import {
   getLastCalled,
   clearQueueHistory,
 } from '../services/queue'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
-import { ScrollArea } from '../components/ui/scroll-area'
+import { PageHeader } from '../components/admin/PageHeader'
+import { EmptyState } from '../components/admin/EmptyState'
+import { StatCard } from '../components/admin/StatCard'
 import {
   Dialog,
   DialogTrigger,
@@ -25,20 +27,28 @@ import {
 } from '../components/ui/dialog'
 import type { QueueTicket, QueueStats, QueueStatus, ServiceType } from '../types/queue'
 import {
+  ActivityIcon,
+  BellRingIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronUpIcon,
-  BarChart3Icon,
-  Trash2Icon,
-  RotateCcwIcon,
+  ClockIcon,
+  HistoryIcon,
+  InboxIcon,
   RefreshCwIcon,
-  MonitorPlayIcon,
+  RotateCcwIcon,
+  SkipForwardIcon,
+  Trash2Icon,
   UploadIcon,
+  UserCheckIcon,
+  VideoIcon,
   Volume2Icon,
 } from 'lucide-react'
 import { getServiceLabel, SERVICE_STATUS_LABELS, STATUS_BADGE_COLOR } from '../lib/serviceTypes'
 import type { VideoData } from '../services/settings'
 import { getMonitorVideos, uploadMonitorVideo, deleteMonitorVideo, getServerVideoVolume, setServerVideoVolume } from '../services/settings'
 import { buildWeeklyCounterChartData, WEEKDAY_COLORS, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
+import { formatDateId, formatDateTimeId, formatTimeId, getWeekRangeLabel } from '../lib/datetime'
 
 const ServiceSummaryChart = lazy(() =>
   import('../components/dashboard/ServiceSummaryChart').then((module) => ({
@@ -56,23 +66,8 @@ function QueueStatusBadge({ status }: { status: QueueStatus }) {
   return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
 }
 
-function CardSkeleton() {
-  return (
-    <Card size="sm">
-      <CardContent className="text-center">
-        <Skeleton className="mx-auto mb-2 h-5 w-1/3" />
-        <Skeleton className="mx-auto h-4 w-2/3" />
-      </CardContent>
-    </Card>
-  )
-}
-
-function formatClock(value: string | null) {
-  if (!value) return '--:--'
-  return new Date(value).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function ChartSkeleton() {
+  return <Skeleton className="h-[26rem] w-full rounded-xl" />
 }
 
 function formatElapsed(start: string | null, now: Date) {
@@ -235,138 +230,172 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard Admin</h1>
-          <p className="text-sm text-muted-foreground">
-            Pantau dan kelola seluruh antrian
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Pantau dan kelola seluruh antrian secara real-time."
+        actions={
           <Button
             variant="outline"
-            size="sm"
             onClick={() => fetchData()}
             disabled={loading}
           >
-            <RefreshCwIcon className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCwIcon className={loading ? 'animate-spin' : ''} data-icon="inline-start" />
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {stats
-          ? (
+      {/* Statistik */}
+      <section aria-label="Statistik antrian">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          {stats ? (
             <>
-              <StatCard label="Total" value={stats.total} color="text-foreground" />
-              <StatCard label="Menunggu" value={stats.waiting} color="text-yellow-600" />
-              <StatCard label="Dipanggil" value={stats.called} color="text-blue-600" />
-              <StatCard label="Dilayani" value={stats.serving} color="text-green-600" />
-              <StatCard label="Selesai" value={stats.completed} color="text-green-700" />
-              <StatCard label="Dilewati" value={stats.skipped} color="text-gray-500" />
+              <StatCard label="Total" value={stats.total} tone="neutral" icon={ActivityIcon} />
+              <StatCard label="Menunggu" value={stats.waiting} tone="amber" icon={ClockIcon} />
+              <StatCard label="Dipanggil" value={stats.called} tone="blue" icon={BellRingIcon} />
+              <StatCard label="Dilayani" value={stats.serving} tone="emerald" icon={UserCheckIcon} />
+              <StatCard label="Selesai" value={stats.completed} tone="green" icon={CheckCircle2Icon} />
+              <StatCard label="Dilewati" value={stats.skipped} tone="gray" icon={SkipForwardIcon} />
             </>
-          )
-          : Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
-      </div>
+          ) : (
+            <>
+              <StatCard label="Total" value={0} tone="neutral" icon={ActivityIcon} loading />
+              <StatCard label="Menunggu" value={0} tone="amber" icon={ClockIcon} loading />
+              <StatCard label="Dipanggil" value={0} tone="blue" icon={BellRingIcon} loading />
+              <StatCard label="Dilayani" value={0} tone="emerald" icon={UserCheckIcon} loading />
+              <StatCard label="Selesai" value={0} tone="green" icon={CheckCircle2Icon} loading />
+              <StatCard label="Dilewati" value={0} tone="gray" icon={SkipForwardIcon} loading />
+            </>
+          )}
+        </div>
+      </section>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {Object.entries(COUNTER_SERVICE_MAP).map(([numStr, serviceType]) => {
-              const num = Number(numStr)
-              const active = counters[num - 1]
-              const isPaused = counterStatus[num] ?? false
-              return (
-                <Card key={num} className="border-t-4" style={{ borderTopColor: WEEKDAY_COLORS[serviceType] }}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-sm">
-                      {getServiceLabel(serviceType)}
-                      {isPaused && (
-                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Istirahat
-                        </span>
+      <div className="grid gap-6 xl:grid-cols-3">
+        {/* Kolom utama */}
+        <div className="space-y-6 xl:col-span-2">
+          {/* Status loket */}
+          <section aria-label="Status loket">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {Object.entries(COUNTER_SERVICE_MAP).map(([numStr, serviceType]) => {
+                const num = Number(numStr)
+                const active = counters[num - 1]
+                const isPaused = counterStatus[num] ?? false
+                return (
+                  <Card key={num}>
+                    <CardHeader className="pb-0">
+                      <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                        <span
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: WEEKDAY_COLORS[serviceType] }}
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{getServiceLabel(serviceType)}</span>
+                        {isPaused && (
+                          <Badge className="ml-auto bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+                            Istirahat
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      {isPaused ? (
+                        <div className="py-5 text-sm text-muted-foreground">Loket istirahat</div>
+                      ) : loading ? (
+                        <div className="py-3">
+                          <Skeleton className="mx-auto h-9 w-24" />
+                          <Skeleton className="mx-auto mt-2 h-3 w-16" />
+                        </div>
+                      ) : active ? (
+                        <>
+                          <div className="py-1 text-4xl font-semibold tracking-tight text-emerald-600 tabular-nums">
+                            {active.queueNumber}
+                          </div>
+                          <div className="mt-1 text-xs font-medium text-foreground">
+                            {getServiceLabel(active.serviceType)}
+                          </div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {active.status === 'serving' ? 'Dilayani' : 'Dipanggil'} •{' '}
+                            <span className="tabular-nums">{formatElapsed(active.calledAt, now)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-5 text-sm text-muted-foreground">Tidak ada</div>
                       )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    {isPaused ? (
-                      <div className="py-4 text-sm text-muted-foreground">Istirahat</div>
-                    ) : loading ? (
-                      <Skeleton className="mx-auto h-8 w-20" />
-                    ) : active ? (
-                      <>
-                        <div className="text-3xl font-bold text-green-600">
-                          {active.queueNumber}
-                        </div>
-                        <div className="mt-1 text-xs capitalize text-muted-foreground">
-                          {getServiceLabel(active.serviceType)}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {active.status === 'serving' ? 'Dilayani' : 'Dipanggil'} • {formatElapsed(active.calledAt, now)}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-4 text-sm text-muted-foreground">Tidak ada</div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
 
-          <Card className="mt-6 border-t-4" style={{ borderTopColor: '#22d3ee' }}>
-            <CardHeader>
-              <CardTitle>Antrian Menunggu ({waitingQueue.length})</CardTitle>
+          {/* Antrian menunggu */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 [.border-b]:pb-4">
+              <div>
+                <CardTitle>Antrian Menunggu</CardTitle>
+                <CardDescription>{waitingQueue.length} tiket dalam antrean</CardDescription>
+              </div>
+              <Badge variant="secondary" className="tabular-nums">
+                {waitingQueue.length}
+              </Badge>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="flex flex-col gap-3">
-                  {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                  ))}
                 </div>
               ) : waitingQueue.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground">
-                  <p className="text-lg font-medium">Tidak ada antrian</p>
-                </div>
+                <EmptyState
+                  icon={InboxIcon}
+                  title="Tidak ada antrian"
+                  description="Semua tiket sudah dilayani. Antrian baru akan muncul di sini."
+                  compact
+                />
               ) : (
-                <ScrollArea className="h-[16rem] pr-3">
-                  {waitingQueue.map((q) => (
-                    <div
-                      key={q.id}
-                      className="flex items-center justify-between border-b py-3 last:border-b-0"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-lg font-bold tabular-nums text-primary">
+                <div className="max-h-72 overflow-auto">
+                  <div className="min-w-[620px]">
+                    <div className="grid grid-cols-[8rem_1fr_10.5rem_6.5rem] gap-2 border-b border-border px-3 pb-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      <span>No. Tiket</span>
+                      <span>Layanan</span>
+                      <span>Waktu</span>
+                      <span className="text-right">Status</span>
+                    </div>
+                    {waitingQueue.map((q) => (
+                      <div
+                        key={q.id}
+                        className="grid grid-cols-[8rem_1fr_10.5rem_6.5rem] items-center gap-2 border-b border-border/70 px-3 py-3 transition-colors last:border-b-0 hover:bg-muted/40"
+                      >
+                        <span className="text-sm font-semibold tabular-nums text-foreground">
                           {q.queueNumber}
                         </span>
-                        <div>
-                          <span className="text-sm capitalize text-muted-foreground">
-                            {getServiceLabel(q.serviceType)}
-                          </span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {formatClock(q.createdAt)}
-                          </span>
-                        </div>
+                        <span className="truncate text-sm text-muted-foreground capitalize">
+                          {getServiceLabel(q.serviceType)}
+                        </span>
+                        <span className="text-xs tabular-nums whitespace-nowrap text-muted-foreground">
+                          {formatDateTimeId(q.createdAt)}
+                        </span>
+                        <span className="flex justify-end">
+                          <QueueStatusBadge status={q.status} />
+                        </span>
                       </div>
-                      <QueueStatusBadge status={q.status} />
-                    </div>
-                  ))}
-                </ScrollArea>
+                    ))}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="mt-6 rounded-2xl border-t-4 shadow-sm" style={{ borderTopColor: '#22d3ee' }}>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          {/* Grafik mingguan */}
+          <Card>
+            <CardHeader className="flex-row items-start justify-between gap-4 space-y-0 [.border-b]:pb-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3Icon className="size-5 text-pln-cyan" />
-                  Perbandingan Layanan Mingguan
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Distribusi tiket per layanan untuk hari kerja Senin sampai Jumat.
-                </p>
+                <CardTitle>Perbandingan Layanan Mingguan</CardTitle>
+                <CardDescription>
+                  Minggu ini: {getWeekRangeLabel()} (Senin–Jumat)
+                </CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -380,9 +409,9 @@ export default function AdminDashboard() {
             {showServiceSummary && (
               <CardContent className="pt-0">
                 {loading ? (
-                  <CardSkeleton />
+                  <ChartSkeleton />
                 ) : (
-                  <Suspense fallback={<CardSkeleton />}>
+                  <Suspense fallback={<ChartSkeleton />}>
                     <ServiceSummaryChart rows={serviceSummary} embedded />
                   </Suspense>
                 )}
@@ -391,20 +420,25 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <div>
-          <Card className="border-t-4" style={{ borderTopColor: '#8B5CF6' }}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Riwayat Selesai</CardTitle>
+        {/* Kolom samping */}
+        <div className="space-y-6">
+          {/* Riwayat selesai */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 [.border-b]:pb-4">
+              <div>
+                <CardTitle>Riwayat Selesai</CardTitle>
+                <CardDescription>20 tiket terakhir yang diselesaikan</CardDescription>
+              </div>
               {recentCompleted.length > 0 && (
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <Trash2Icon className="size-4" />
-                      <span className="ml-2 text-xs">Clear</span>
+                      <Trash2Icon />
+                      Clear
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -432,48 +466,63 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <CardSkeleton />
-              ) : recentCompleted.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>Belum ada riwayat</p>
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  ))}
                 </div>
+              ) : recentCompleted.length === 0 ? (
+                <EmptyState
+                  icon={HistoryIcon}
+                  title="Belum ada riwayat"
+                  description="Tiket yang sudah selesai akan tercatat di sini."
+                  compact
+                />
               ) : (
-                <ScrollArea className="h-[22rem] pr-3">
-                  <div className="space-y-2">
-                    {recentCompleted.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="flex items-center justify-between rounded-lg border px-4 py-3"
-                      >
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            {ticket.queueNumber}
-                          </div>
-                          <div className="text-xs capitalize text-muted-foreground">
-                            {getServiceLabel(ticket.serviceType)}
-                            {ticket.counterNumber && ` • Loket ${ticket.counterNumber}`}
-                          </div>
+                <div className="max-h-[22rem] space-y-2 overflow-y-auto pr-1">
+                  {recentCompleted.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border px-3.5 py-3 transition-colors hover:bg-muted/40"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold tabular-nums text-foreground">
+                          {ticket.queueNumber}
                         </div>
-                        <div className="text-right text-xs text-muted-foreground">
-                          {formatClock(ticket.completedAt)}
+                        <div className="truncate text-xs text-muted-foreground capitalize">
+                          {getServiceLabel(ticket.serviceType)}
+                          {ticket.counterNumber && ` • Loket ${ticket.counterNumber}`}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                      <div className="shrink-0 text-right">
+                        <div className="text-xs font-medium tabular-nums whitespace-nowrap text-foreground">
+                          {formatDateId(ticket.completedAt)}
+                        </div>
+                        <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                          {formatTimeId(ticket.completedAt)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Pengaturan</CardTitle>
+          {/* Operasi cepat */}
+          <Card>
+            <CardHeader className="[.border-b]:pb-4">
+              <CardTitle>Operasi Cepat</CardTitle>
+              <CardDescription>Aksi administratif pada data antrian.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
+            <CardContent>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="secondary" className="w-full">
-                    <RotateCcwIcon className="mr-2 size-4" />
+                  <Button
+                    variant="outline"
+                    className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <RotateCcwIcon data-icon="inline-start" />
                     Reset Semua Antrian
                   </Button>
                 </DialogTrigger>
@@ -498,145 +547,149 @@ export default function AdminDashboard() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-
-              <div className="mt-2 border-t pt-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <MonitorPlayIcon className="size-4 text-pln-cyan" />
-                    Video Monitor ({videos.length})
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowVideoSection((prev) => !prev)}
-                  >
-                    {showVideoSection ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                    {showVideoSection ? 'Minimize' : 'Buka'}
-                  </Button>
-                </div>
-
-                {showVideoSection && (
-                  <>
-                    <div
-                      onClick={() => inputRef.current?.click()}
-                      className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 px-4 py-5 text-center text-sm text-muted-foreground transition-colors hover:border-pln-cyan/50 hover:text-pln-cyan"
-                    >
-                      <UploadIcon className="size-7" />
-                      <span>Klik untuk upload video baru</span>
-                      <span className="text-[11px]">MP4, MOV, AVI, WMV, WEBM — maks 200MB</span>
-                    </div>
-
-                    <input
-                      ref={inputRef}
-                      type="file"
-                      accept="video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/webm"
-                      className="hidden"
-                      onChange={handleFileSelect}
-                    />
-
-                    {videoUploading && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-pln-cyan">
-                        <RefreshCwIcon className="size-4 animate-spin" />
-                        Mengupload...
-                      </div>
-                    )}
-
-                    {videoLoading ? (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                        <RefreshCwIcon className="size-4 animate-spin" />
-                        Memuat daftar video...
-                      </div>
-                    ) : videos.length === 0 ? (
-                      <p className="mt-3 text-center text-xs text-muted-foreground">Belum ada video</p>
-                    ) : (
-                      <div className="mt-3 max-h-[20rem] space-y-2 overflow-y-auto">
-                        {videos.map((v) => (
-                          <div
-                            key={v.filename}
-                            className="overflow-hidden rounded-lg border bg-muted/30"
-                          >
-                            <video
-                              src={v.url}
-                              className="h-28 w-full bg-black object-cover"
-                              controls
-                            >
-                              Browser tidak mendukung video.
-                            </video>
-                            <div className="flex items-center justify-between px-3 py-2">
-                              <span className="truncate text-xs text-muted-foreground">{v.filename}</span>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteVideo(v.filename)}
-                                disabled={deleting === v.filename}
-                              >
-                                {deleting === v.filename ? (
-                                  <RefreshCwIcon className="size-4 animate-spin" />
-                                ) : (
-                                  <Trash2Icon className="size-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-4 border-t pt-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                          <Volume2Icon className="size-4 text-pln-cyan" />
-                          Volume Video
-                        </div>
-                        <span className="text-sm tabular-nums text-muted-foreground">
-                          {Math.round(videoVolume * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={videoVolume}
-                        onChange={async (e) => {
-                          const v = Number(e.target.value)
-                          setVideoVolume(v)
-                          setVolumeSaving(true)
-                          try {
-                            await setServerVideoVolume(v)
-                          } catch {
-                            toast.error('Gagal menyimpan volume')
-                          } finally {
-                            setVolumeSaving(false)
-                          }
-                        }}
-                        className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-muted-foreground/20 accent-pln-cyan"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {videoVolume === 0
-                          ? 'Video akan senyap (mute)'
-                          : `Video akan diputar dengan volume ${Math.round(videoVolume * 100)}% — suara antrian tidak terganggu`}
-                        {volumeSaving && ' • Menyimpan...'}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
             </CardContent>
+          </Card>
+
+          {/* Media monitor TV */}
+          <Card>
+            <CardHeader className="[.border-b]:pb-4">
+              <div className="flex w-full items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <VideoIcon className="size-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <CardTitle>Media Monitor TV</CardTitle>
+                    <CardDescription>
+                      {videos.length} video • volume {Math.round(videoVolume * 100)}%
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-expanded={showVideoSection}
+                  aria-label={showVideoSection ? 'Tutup bagian media' : 'Buka bagian media'}
+                  onClick={() => setShowVideoSection((prev) => !prev)}
+                >
+                  {showVideoSection ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                </Button>
+              </div>
+            </CardHeader>
+            {showVideoSection && (
+              <CardContent className="pt-0">
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground transition-colors hover:border-ring hover:bg-accent/60 hover:text-foreground"
+                >
+                  <UploadIcon className="size-6" aria-hidden="true" />
+                  <span className="font-medium">Klik untuk upload video baru</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    MP4, MOV, AVI, WMV, WEBM — maks 200MB
+                  </span>
+                </button>
+
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/webm"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {videoUploading && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCwIcon className="size-4 animate-spin" />
+                    Mengupload...
+                  </div>
+                )}
+
+                {videoLoading ? (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCwIcon className="size-4 animate-spin" />
+                    Memuat daftar video...
+                  </div>
+                ) : videos.length === 0 ? (
+                  <p className="mt-3 text-center text-xs text-muted-foreground">Belum ada video</p>
+                ) : (
+                  <div className="mt-3 max-h-[20rem] space-y-2 overflow-y-auto pr-1">
+                    {videos.map((v) => (
+                      <div
+                        key={v.filename}
+                        className="overflow-hidden rounded-xl border border-border bg-card"
+                      >
+                        <video
+                          src={v.url}
+                          className="h-28 w-full bg-black object-cover"
+                          controls
+                        >
+                          Browser tidak mendukung video.
+                        </video>
+                        <div className="flex items-center justify-between gap-2 px-3 py-2">
+                          <span className="truncate text-xs text-muted-foreground">{v.filename}</span>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={`Hapus ${v.filename}`}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => handleDeleteVideo(v.filename)}
+                            disabled={deleting === v.filename}
+                          >
+                            {deleting === v.filename ? (
+                              <RefreshCwIcon className="animate-spin" />
+                            ) : (
+                              <Trash2Icon />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 border-t border-border pt-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Volume2Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+                      Volume Video
+                    </div>
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {Math.round(videoVolume * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={videoVolume}
+                    onChange={async (e) => {
+                      const v = Number(e.target.value)
+                      setVideoVolume(v)
+                      setVolumeSaving(true)
+                      try {
+                        await setServerVideoVolume(v)
+                      } catch {
+                        toast.error('Gagal menyimpan volume')
+                      } finally {
+                        setVolumeSaving(false)
+                      }
+                    }}
+                    className="mt-2.5 h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+                  />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {videoVolume === 0
+                      ? 'Video akan senyap (mute)'
+                      : `Video akan diputar dengan volume ${Math.round(videoVolume * 100)}% — suara antrian tidak terganggu`}
+                    {volumeSaving && ' • Menyimpan...'}
+                  </p>
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
       </div>
     </div>
-  )
-}
-
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <Card size="sm">
-      <CardContent className="text-center">
-        <div className={`text-2xl font-bold ${color}`}>{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-      </CardContent>
-    </Card>
   )
 }

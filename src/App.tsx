@@ -1,10 +1,14 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { AppLayout } from './components/layout/AppLayout'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
+import { AdminLayout } from './components/admin/AdminLayout'
+import { PetugasLayout } from './components/petugas/PetugasLayout'
 import { Toaster } from './components/ui/sonner'
 import Kiosk from './pages/Kiosk'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminSettings from './pages/AdminSettings'
+import AdminReports from './pages/AdminReports'
+import AdminAccounts from './pages/AdminAccounts'
+import AdminServices from './pages/AdminServices'
 import PetugasDashboard from './pages/PetugasDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
@@ -30,28 +34,35 @@ export default function App() {
     <Router>
       <NetworkStatus />
       <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<HomeRedirect />} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <Outlet />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
-          <Route
-            path="/petugas"
-            element={
-              <ProtectedRoute roles={['petugas']}>
-                <PetugasDashboard />
-              </ProtectedRoute>
-            }
-          />
+        {/* Admin — layout sendiri, tanpa navbar lama */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="reports" element={<AdminReports />} />
+          <Route path="services" element={<AdminServices />} />
+          <Route path="accounts" element={<AdminAccounts />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
+
+        <Route
+          path="/petugas"
+          element={
+            <ProtectedRoute roles={['petugas']}>
+              <PetugasLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<PetugasDashboard />} />
+        </Route>
+
+        {/* Redirect beranda sesuai role */}
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route
           path="/kiosk"

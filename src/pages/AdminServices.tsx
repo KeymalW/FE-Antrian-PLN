@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, createElement } from 'react'
 import { toast } from 'sonner'
 import {
   getServices,
@@ -32,20 +32,39 @@ import {
   SearchIcon,
   Trash2Icon,
 } from 'lucide-react'
+import { CURATED_KIOSK_ICONS, getKioskIconComponent } from '../lib/kioskIcons'
 import type { ServiceDefinition } from '../types/admin'
+import type { ServiceGroup } from '../lib/serviceTypes'
 
 interface ServiceFormState {
   name: string
+  code: string
   prefix: string
+  counterNumber: string
+  icon: string
+  serviceGroup: ServiceGroup
   isActive: boolean
   showInKiosk: boolean
 }
 
 const EMPTY_FORM: ServiceFormState = {
   name: '',
+  code: '',
   prefix: '',
+  counterNumber: '',
+  icon: '',
+  serviceGroup: 'group_a',
   isActive: true,
   showInKiosk: true,
+}
+
+function slugifyCode(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || ''
+  )
 }
 
 export default function AdminServices() {
@@ -58,6 +77,7 @@ export default function AdminServices() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fetchIdRef = useRef(0)
+  const codeAutoRef = useRef(true)
 
   const fetchData = useCallback(async () => {
     const id = ++fetchIdRef.current
@@ -87,14 +107,20 @@ export default function AdminServices() {
   const openCreate = () => {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    codeAutoRef.current = true
     setFormOpen(true)
   }
 
   const openEdit = (service: ServiceDefinition) => {
     setEditingId(service.id)
+    codeAutoRef.current = false
     setForm({
       name: service.name,
+      code: service.code,
       prefix: service.prefix,
+      counterNumber: service.counterNumber != null ? String(service.counterNumber) : '',
+      icon: service.icon ?? '',
+      serviceGroup: service.serviceGroup,
       isActive: service.isActive,
       showInKiosk: service.showInKiosk,
     })
@@ -107,7 +133,11 @@ export default function AdminServices() {
     try {
       const payload = {
         name: form.name,
+        code: form.code.toLowerCase(),
         prefix: form.prefix.toUpperCase(),
+        counterNumber: form.counterNumber.trim() !== '' ? Number(form.counterNumber) : null,
+        icon: form.icon || null,
+        serviceGroup: form.serviceGroup,
         isActive: form.isActive,
         showInKiosk: form.showInKiosk,
       }
@@ -298,13 +328,37 @@ export default function AdminServices() {
               <Input
                 id="service-name"
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) => {
+                  const name = e.target.value
+                  setForm((f) => ({
+                    ...f,
+                    name,
+                    code: codeAutoRef.current ? slugifyCode(name) : f.code,
+                  }))
+                }}
                 placeholder="cth. Pengaduan"
                 required
                 autoFocus
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="service-code">Kode Layanan</Label>
+                <Input
+                  id="service-code"
+                value={form.code}
+                onChange={(e) => {
+                  codeAutoRef.current = false
+                  setForm((f) => ({ ...f, code: e.target.value.toLowerCase() }))
+                }}
+                  placeholder="cth. pengaduan"
+                  required
+                  maxLength={50}
+                  pattern="[a-z0-9_]+"
+                  title="Huruf kecil, angka, dan underscore"
+                  className="lowercase"
+                />
+              </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="service-prefix">Prefix Tiket</Label>
                 <Input
@@ -317,26 +371,81 @@ export default function AdminServices() {
                   className="uppercase"
                 />
               </div>
-              <div className="space-y-3 pt-6">
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                    className="size-4 accent-primary"
-                  />
-                  Layanan aktif
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.showInKiosk}
-                    onChange={(e) => setForm((f) => ({ ...f, showInKiosk: e.target.checked }))}
-                    className="size-4 accent-primary"
-                  />
-                  Tampil di kiosk
-                </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="service-counter">Nomor Loket (TV)</Label>
+                <Input
+                  id="service-counter"
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={form.counterNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, counterNumber: e.target.value }))}
+                  placeholder="cth. 1"
+                />
               </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="service-group">Grup Panggil</Label>
+                <select
+                  id="service-group"
+                  value={form.serviceGroup}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, serviceGroup: e.target.value as ServiceGroup }))
+                  }
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="group_a">Grup A — Pengaduan & PB/PD</option>
+                  <option value="group_b">Grup B — P2TL</option>
+                </select>
+              </div>
+            </div>
+            <p className="-mt-0.5 text-[11px] text-muted-foreground">
+              Nomor loket mengaitkan layanan ke kartu TV display; kosongkan bila tidak tampil di TV.
+              Layanan dalam grup yang sama tidak bisa dipanggil bersamaan di satu loket.
+            </p>
+            <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="service-icon">Ikon Kiosk</Label>
+                <select
+                  id="service-icon"
+                  value={form.icon}
+                  onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {CURATED_KIOSK_ICONS.map((opt) => (
+                    <option key={opt.name} value={opt.name}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex h-8 w-12 items-center justify-center rounded-lg border border-input text-primary">
+                {createElement(getKioskIconComponent(form.icon), {
+                  className: 'size-4',
+                  'aria-hidden': true,
+                })}
+              </div>
+            </div>
+            <div className="space-y-3 pt-1">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
+                  className="size-4 accent-primary"
+                />
+                Layanan aktif
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.showInKiosk}
+                  onChange={(e) => setForm((f) => ({ ...f, showInKiosk: e.target.checked }))}
+                  className="size-4 accent-primary"
+                />
+                Tampil di kiosk
+              </label>
             </div>
             <p className="text-[11px] text-muted-foreground">
               Layanan nonaktif tidak muncul sebagai pilihan tiket baru, tetapi riwayatnya tetap

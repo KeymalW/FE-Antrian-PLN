@@ -75,6 +75,16 @@ export async function completeQueue(queueId: string): Promise<QueueTicket> {
   return res.data
 }
 
+export async function recallQueue(queueId: string): Promise<QueueTicket> {
+  if (USE_MOCK_DATA) {
+    const { mockRecallQueue } = await import('../mocks/mockBackend')
+    return mockRecallQueue(queueId)
+  }
+
+  const res = await put<QueueTicket>(`/queue/${queueId}/recall`)
+  return res.data
+}
+
 export async function getQueueStats(): Promise<QueueStats> {
   if (USE_MOCK_DATA) {
     return mockGetQueueStats()

@@ -14,6 +14,7 @@ export function useWebSocket(handlers?: {
   onQueueCall?: MessageHandler
   onQueueComplete?: MessageHandler
   onQueueSkip?: MessageHandler
+  onQueueRecall?: MessageHandler
   onStatsUpdate?: MessageHandler
 }) {
   const wsRef = useRef<WebSocket | null>(null)
@@ -79,6 +80,7 @@ export function useWebSocket(handlers?: {
             case 'queue_call': h?.onQueueCall?.(msg); break
             case 'queue_complete': h?.onQueueComplete?.(msg); break
             case 'queue_skip': h?.onQueueSkip?.(msg); break
+            case 'queue_recall': h?.onQueueRecall?.(msg); break
             case 'stats_update': h?.onStatsUpdate?.(msg); break
           }
         } catch {

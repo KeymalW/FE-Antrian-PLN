@@ -1,25 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { takeTicket } from '../services/queue'
 import { logout as logoutApi } from '../services/auth'
+import { getKioskTextSettings } from '../services/settings'
 import { useAuthStore } from '../store/authStore'
+import { useSettingsStore } from '../store/settingsStore'
+import { useServicesStore } from '../store/servicesStore'
+import { getKioskIconComponent } from '../lib/kioskIcons'
+import type { KioskTextSettings } from '../types/admin'
 import {
-  Ticket,
-  Scale,
   MaximizeIcon,
   MinimizeIcon,
   LogOutIcon,
   AlertTriangle,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Spinner } from '../components/ui/spinner'
 import type { ServiceType } from '../types/queue'
 
-const services: { type: ServiceType; label: string; icon: React.ElementType }[] = [
-  { type: 'p2tl', label: 'P2TL', icon: Ticket },
-  { type: 'pb_pd_migrasi', label: 'PB/PD/migrasi', icon: Ticket },
-  { type: 'pengaduan', label: 'PENGADUAN', icon: Scale },
-]
+const DEFAULT_KIOSK_TEXT: KioskTextSettings = {
+  welcomeText: 'Selamat Datang di',
+  subtitleText: 'Silakan pilih layanan yang Anda butuhkan',
+  hintText: 'Sentuh layar untuk mencetak tiket',
+  footerText: 'PT PLN (Persero) · ULP Subang',
+}
 
 const WEEKDAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 const MONTHS = [
@@ -33,7 +38,7 @@ function ServiceCard({
   delay,
   onClick,
 }: {
-  svc: (typeof services)[number]
+  svc: { code: string; name: string; icon: LucideIcon }
   loading: boolean
   delay: number
   onClick: () => void
@@ -52,18 +57,18 @@ function ServiceCard({
         hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-16px_rgba(3,11,36,0.7)]
         active:scale-[0.98]
         disabled:cursor-not-allowed disabled:opacity-70"
-      aria-label={`Ambil tiket ${svc.label}`}
+      aria-label={`Ambil tiket ${svc.name}`}
     >
       <div
-        className="mb-5 flex size-24 items-center justify-center rounded-2xl
-          bg-gradient-to-br from-pln-100 to-pln-50 text-pln-600
+        className="mb-5 flex h-24 w-32 items-center justify-center rounded-2xl
+          bg-gradient-to-br from-pln-100 to-pln-50
           ring-1 ring-pln-100 transition-transform duration-200 group-hover:scale-105"
       >
-        <Icon className="size-12" strokeWidth={1.7} />
+        <Icon className="size-16 text-pln-700" aria-hidden="true" />
       </div>
 
       <div className="flex min-h-20 items-center justify-center text-balance text-center text-2xl font-bold leading-tight text-pln-700">
-        {svc.label}
+        {svc.name}
       </div>
 
       <div className="mt-auto pt-6">
@@ -82,10 +87,55 @@ function ServiceCard({
 export default function Kiosk() {
   const navigate = useNavigate()
   const { logout } = useAuthStore()
+  const { general, fetchGeneral } = useSettingsStore()
+  const { services, fetchServices } = useServicesStore()
+  const [kioskText, setKioskText] = useState<KioskTextSettings>(DEFAULT_KIOSK_TEXT)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    void fetchGeneral()
+    void fetchServices()
+  }, [fetchGeneral, fetchServices])
+
+  // Kartu kiosk: layanan aktif yang ditandai "tampil di kiosk".
+  const kioskServices = useMemo(
+    () =>
+      services
+        .filter((s) => s.isActive && s.showInKiosk)
+        .map((s) => ({
+          code: s.code,
+          name: s.name,
+          icon: getKioskIconComponent(s.icon),
+        })),
+    [services],
+  )
+
+  useEffect(() => {
+    void fetchGeneral()
+  }, [fetchGeneral])
+
+  useEffect(() => {
+    let cancelled = false
+    getKioskTextSettings()
+      .then((data) => {
+        if (cancelled) return
+        setKioskText({
+          welcomeText: data.welcomeText?.trim() || DEFAULT_KIOSK_TEXT.welcomeText,
+          subtitleText: data.subtitleText?.trim() || DEFAULT_KIOSK_TEXT.subtitleText,
+          hintText: data.hintText?.trim() || DEFAULT_KIOSK_TEXT.hintText,
+          footerText: data.footerText?.trim() || DEFAULT_KIOSK_TEXT.footerText,
+        })
+      })
+      .catch(() => {
+        /* fallback ke teks default */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleLogout = () => {
     logoutApi().catch(() => toast.error('Gagal logout dari server'))
@@ -112,12 +162,12 @@ export default function Kiosk() {
     }
   }
 
-  const handleTakeTicket = async (serviceType: ServiceType) => {
+  const handleTakeTicket = async (serviceCode: string) => {
     setLoading(true)
     setError('')
 
     try {
-      const result = await takeTicket(serviceType)
+      const result = await takeTicket(serviceCode as ServiceType)
       navigate(`/track/${result.id}`)
     } catch (err) {
       const userMsg = (err as { userMessage?: string })?.userMessage
@@ -188,28 +238,28 @@ export default function Kiosk() {
       <header className="pointer-events-none relative z-10 flex flex-col items-center px-8 pt-14 text-center">
         <div className="relative">
           <div
-            className="absolute -inset-5 rounded-full bg-pln-400/30 blur-2xl animate-kiosk-glow"
+            className="absolute -inset-5 rounded-xl bg-pln-400/30 blur-2xl animate-kiosk-glow"
             aria-hidden="true"
           />
           <img
-            src="/assets/logo-pln.png"
-            alt="Logo PLN"
-            className="relative h-24 w-24 rounded-full bg-white p-2 shadow-[0_8px_30px_rgba(3,11,36,0.45)]"
+            src={general?.logoUrl?.trim() || '/assets/logo-pln.png'}
+            alt="Logo instansi"
+            className="relative h-24 w-24 object-contain drop-shadow-[0_10px_25px_rgba(3,11,36,0.55)]"
           />
         </div>
 
-        <h1 className="mt-6 text-2xl font-light tracking-wide text-white/90">Selamat Datang di</h1>
+        <h1 className="mt-6 text-2xl font-light tracking-wide text-white/90">{kioskText.welcomeText}</h1>
         <p className="mt-1 font-display text-5xl font-bold tracking-tight text-white md:text-6xl">
-          ULP Subang
+          {general?.institutionName?.trim() || 'ULP Subang'}
         </p>
-        <p className="mt-4 text-lg font-medium text-white/80">Silakan pilih layanan yang Anda butuhkan</p>
+        <p className="mt-4 text-lg font-medium text-white/80">{kioskText.subtitleText}</p>
 
         <div
           className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-6 py-2.5
             text-base font-medium text-white/70 backdrop-blur-sm animate-pulse"
         >
           <span aria-hidden="true">☝️</span>
-          Sentuh layar untuk mencetak tiket
+          {kioskText.hintText}
         </div>
       </header>
 
@@ -228,13 +278,13 @@ export default function Kiosk() {
         )}
 
         <div className="grid w-full max-w-6xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
-          {services.map((svc, i) => (
+          {kioskServices.map((svc, i) => (
             <ServiceCard
-              key={svc.type}
+              key={svc.code}
               svc={svc}
               loading={loading}
               delay={i * 110}
-              onClick={() => handleTakeTicket(svc.type)}
+              onClick={() => void handleTakeTicket(svc.code)}
             />
           ))}
         </div>
@@ -242,7 +292,7 @@ export default function Kiosk() {
 
       {/* ===== Footer ===== */}
       <footer className="relative z-10 flex items-center justify-between px-8 pb-7">
-        <div className="text-sm text-white/45">PT PLN (Persero) · ULP Subang</div>
+        <div className="text-sm text-white/45">{kioskText.footerText}</div>
 
         <button
           onClick={toggleFullscreen}

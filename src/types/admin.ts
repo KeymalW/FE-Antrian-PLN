@@ -24,17 +24,27 @@ export interface UpdateAccountInput {
   counterNumber?: number | null
 }
 
+import type { ServiceGroup } from '../lib/serviceTypes'
+
 export interface ServiceDefinition {
   id: string
   name: string
+  code: string
   prefix: string
+  counterNumber: number | null
+  icon: string | null
+  serviceGroup: ServiceGroup
   isActive: boolean
   showInKiosk: boolean
 }
 
 export interface CreateServiceInput {
   name: string
+  code: string
   prefix: string
+  counterNumber: number | null
+  icon: string | null
+  serviceGroup: ServiceGroup
   isActive: boolean
   showInKiosk: boolean
 }
@@ -50,4 +60,11 @@ export interface TicketTextSettings {
   headerText: string
   subHeaderText: string
   footerMessage: string
+}
+
+export interface KioskTextSettings {
+  welcomeText: string
+  subtitleText: string
+  hintText: string
+  footerText: string
 }

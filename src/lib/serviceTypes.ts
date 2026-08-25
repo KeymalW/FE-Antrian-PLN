@@ -6,6 +6,27 @@ export const SERVICE_TYPE_ORDER: ServiceType[] = [
   'p2tl',
 ]
 
+/**
+ * Snapshot layanan dinamis dari Kelola Layanan (diisi oleh servicesStore).
+ * Lookup label/grup memeriksa snapshot ini dulu, lalu fallback ke peta legacy
+ * agar tiket-tiket lama tetap terbaca.
+ */
+interface DynamicServiceMeta {
+  name: string
+  serviceGroup: 'group_a' | 'group_b'
+}
+
+let dynamicServicesByCode: Record<string, DynamicServiceMeta> = {}
+
+export function setDynamicServices(
+  list: ReadonlyArray<{ code: string; name: string; serviceGroup: 'group_a' | 'group_b' }>,
+): void {
+  dynamicServicesByCode = {}
+  for (const svc of list) {
+    dynamicServicesByCode[svc.code] = { name: svc.name, serviceGroup: svc.serviceGroup }
+  }
+}
+
 export type ServiceGroup = 'group_a' | 'group_b'
 
 const SERVICE_GROUP_MAP: Record<ServiceType, ServiceGroup> = {
@@ -19,8 +40,8 @@ export const SERVICE_GROUP_LABELS: Record<ServiceGroup, string> = {
   group_b: 'P2TL',
 }
 
-export function getServiceGroup(serviceType: ServiceType): ServiceGroup {
-  return SERVICE_GROUP_MAP[serviceType] ?? 'group_a'
+export function getServiceGroup(serviceType: string): ServiceGroup {
+  return dynamicServicesByCode[serviceType]?.serviceGroup ?? SERVICE_GROUP_MAP[serviceType as ServiceType] ?? 'group_a'
 }
 
 const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
@@ -45,6 +66,10 @@ function titleCase(value: string) {
 
 export function getServiceLabel(serviceType: string) {
   const normalized = normalizeServiceKey(serviceType)
+
+  if (dynamicServicesByCode[normalized]?.name) {
+    return dynamicServicesByCode[normalized].name
+  }
 
   if (normalized in SERVICE_TYPE_LABELS) {
     return SERVICE_TYPE_LABELS[normalized as ServiceType]

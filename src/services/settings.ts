@@ -1,7 +1,7 @@
 import api from './api'
 import { get, post, put, del } from './api'
 import { USE_MOCK_DATA } from '../mocks/mockMode'
-import type { GeneralSettings, TicketTextSettings } from '../types/admin'
+import type { GeneralSettings, KioskTextSettings, TicketTextSettings } from '../types/admin'
 
 export interface VideoData {
   id?: string
@@ -212,5 +212,27 @@ export async function updateTicketTextSettings(
   }
 
   const res = await post<TicketTextSettings>('/settings/ticket-text', patch)
+  return res.data
+}
+
+export async function getKioskTextSettings(): Promise<KioskTextSettings> {
+  if (USE_MOCK_DATA) {
+    const { mockGetKioskText } = await import('../mocks/mockBackend')
+    return mockGetKioskText()
+  }
+
+  const res = await get<KioskTextSettings>('/settings/kiosk-text')
+  return res.data
+}
+
+export async function updateKioskTextSettings(
+  patch: Partial<KioskTextSettings>,
+): Promise<KioskTextSettings> {
+  if (USE_MOCK_DATA) {
+    const { mockUpdateKioskText } = await import('../mocks/mockBackend')
+    return mockUpdateKioskText(patch)
+  }
+
+  const res = await post<KioskTextSettings>('/settings/kiosk-text', patch)
   return res.data
 }

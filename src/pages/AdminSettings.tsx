@@ -17,6 +17,7 @@ import {
   Undo2Icon,
   Building2Icon,
   MonitorPlayIcon,
+  MonitorSmartphoneIcon,
   TicketIcon,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -26,12 +27,14 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { IdentityTab } from '../components/settings/IdentityTab'
 import { MediaTab } from '../components/settings/MediaTab'
 import { TicketTab } from '../components/settings/TicketTab'
+import { KioskTab } from '../components/settings/KioskTab'
 import type { QueueTicket } from '../types/queue'
 
 const TABS = [
   { key: 'general', label: 'Umum', icon: SettingsIcon },
   { key: 'identity', label: 'Identitas', icon: Building2Icon },
   { key: 'media', label: 'Media TV', icon: MonitorPlayIcon },
+  { key: 'kiosk', label: 'Kiosk', icon: MonitorSmartphoneIcon },
   { key: 'ticket', label: 'Tiket', icon: TicketIcon },
   { key: 'trash', label: 'Tempat Sampah', icon: Trash2Icon },
 ] as const
@@ -325,6 +328,7 @@ export default function AdminSettings() {
         {activeTab === 'general' && <GeneralTab />}
         {activeTab === 'identity' && <IdentityTab />}
         {activeTab === 'media' && <MediaTab />}
+        {activeTab === 'kiosk' && <KioskTab />}
         {activeTab === 'ticket' && <TicketTab />}
         {activeTab === 'trash' && <TrashTab />}
       </div>
