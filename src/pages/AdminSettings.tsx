@@ -2,37 +2,41 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getTrashedTickets, restoreTicket, emptyTrash, clearQueueHistory } from '../services/queue'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
-import { ScrollArea } from '../components/ui/scroll-area'
+import { PageHeader } from '../components/admin/PageHeader'
+import { EmptyState } from '../components/admin/EmptyState'
 import {
   RotateCcwIcon,
   RefreshCwIcon,
-  Trash2Icon,
-  Undo2Icon,
-  AlertTriangleIcon,
   SettingsIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+  Undo2Icon,
+  Building2Icon,
+  MonitorPlayIcon,
+  TicketIcon,
 } from 'lucide-react'
+import { cn } from '../lib/utils'
 import { getServiceLabel } from '../lib/serviceTypes'
+import { formatDateTimeId } from '../lib/datetime'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
+import { IdentityTab } from '../components/settings/IdentityTab'
+import { MediaTab } from '../components/settings/MediaTab'
+import { TicketTab } from '../components/settings/TicketTab'
 import type { QueueTicket } from '../types/queue'
 
 const TABS = [
-  { key: 'general', label: 'Umum' },
-  { key: 'trash', label: 'Tempat Sampah' },
+  { key: 'general', label: 'Umum', icon: SettingsIcon },
+  { key: 'identity', label: 'Identitas', icon: Building2Icon },
+  { key: 'media', label: 'Media TV', icon: MonitorPlayIcon },
+  { key: 'ticket', label: 'Tiket', icon: TicketIcon },
+  { key: 'trash', label: 'Tempat Sampah', icon: Trash2Icon },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
-
-function formatClock(value: string | null) {
-  if (!value) return '--:--'
-  return new Date(value).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function TabButton({
   active,
@@ -42,11 +46,12 @@ function TabButton({
     <button
       type="button"
       data-active={active}
-      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
         active
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
+          ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
       {...props}
     />
   )
@@ -68,15 +73,21 @@ function GeneralTab() {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="border-destructive/25">
         <CardHeader>
-          <CardTitle>Pengaturan Umum</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TriangleAlertIcon className="size-4 text-destructive" aria-hidden="true" />
+            Reset Semua Antrian
+          </CardTitle>
+          <CardDescription>
+            Menghapus semua tiket yang sudah selesai atau dilewati dari sistem.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
-                <RotateCcwIcon className="mr-2 size-4" />
+              <Button variant="destructive" className="w-full sm:w-auto">
+                <RotateCcwIcon data-icon="inline-start" />
                 Reset Semua Antrian
               </Button>
             </DialogTrigger>
@@ -101,9 +112,6 @@ function GeneralTab() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <p className="text-xs text-muted-foreground">
-            Menghapus semua tiket yang sudah selesai atau dilewati dari sistem.
-          </p>
         </CardContent>
       </Card>
     </div>
@@ -161,19 +169,26 @@ function TrashTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="flex items-center gap-2">
-          <Trash2Icon className="size-5 text-muted-foreground" />
-          Tempat Sampah
-        </CardTitle>
-        <div className="flex gap-2">
+      <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 [.border-b]:pb-4">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            Tempat Sampah
+            {!loading && (
+              <Badge variant="secondary" className="tabular-nums">
+                {tickets.length}
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>Tiket yang sudah selesai atau dilewati.</CardDescription>
+        </div>
+        <div className="flex shrink-0 gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => fetchTrash()}
             disabled={loading}
           >
-            <RefreshCwIcon className={`mr-2 size-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCwIcon className={loading ? 'animate-spin' : ''} data-icon="inline-start" />
             Refresh
           </Button>
           {tickets.length > 0 && (
@@ -184,16 +199,13 @@ function TrashTab() {
                   size="sm"
                   disabled={actionLoading === 'empty-all'}
                 >
-                  <Trash2Icon className="mr-2 size-4" />
+                  <Trash2Icon data-icon="inline-start" />
                   Kosongkan
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <AlertTriangleIcon className="size-5 text-destructive" />
-                    Kosongkan Tempat Sampah?
-                  </DialogTitle>
+                  <DialogTitle>Kosongkan Tempat Sampah?</DialogTitle>
                   <DialogDescription>
                     Semua tiket di tempat sampah akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
                   </DialogDescription>
@@ -205,9 +217,9 @@ function TrashTab() {
                     disabled={actionLoading === 'empty-all'}
                   >
                     {actionLoading === 'empty-all' ? (
-                      <RefreshCwIcon className="mr-2 size-4 animate-spin" />
+                      <RefreshCwIcon className="animate-spin" />
                     ) : (
-                      <Trash2Icon className="mr-2 size-4" />
+                      <Trash2Icon />
                     )}
                     Hapus Semua
                   </Button>
@@ -221,64 +233,58 @@ function TrashTab() {
         {loading ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
+              <Skeleton key={i} className="h-[4.5rem] w-full rounded-xl" />
             ))}
           </div>
         ) : tickets.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">
-            <Trash2Icon className="mx-auto mb-3 size-10 opacity-30" />
-            <p className="text-lg font-medium">Tempat sampah kosong</p>
-            <p className="text-sm">Tiket yang sudah selesai atau dilewati akan muncul di sini.</p>
-          </div>
+          <EmptyState
+            icon={Trash2Icon}
+            title="Tempat sampah kosong"
+            description="Tiket yang sudah selesai atau dilewati akan muncul di sini."
+          />
         ) : (
-          <>
-            <p className="mb-3 text-sm text-muted-foreground">
-              {tickets.length} tiket di tempat sampah
-            </p>
-            <ScrollArea className="h-[32rem] pr-3">
-              <div className="space-y-2">
-                {tickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="flex items-center justify-between rounded-lg border px-4 py-3"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <div className="font-semibold text-foreground">
-                          {ticket.queueNumber}
-                        </div>
-                        <div className="text-xs capitalize text-muted-foreground">
-                          {getServiceLabel(ticket.serviceType)}
-                          {ticket.counterNumber && ` • Loket ${ticket.counterNumber}`}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {ticket.status === 'completed' ? 'Selesai' : 'Dilewati'} • {formatClock(ticket.completedAt ?? ticket.calledAt)}
-                        </div>
-                      </div>
+          <div className="space-y-2">
+            {tickets.map((ticket) => (
+              <div
+                key={ticket.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold tabular-nums text-foreground">
+                      {ticket.queueNumber}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={ticket.status === 'completed' ? 'default' : 'destructive'}>
-                        {ticket.status === 'completed' ? 'Selesai' : 'Dilewati'}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRestore(ticket.id)}
-                        disabled={actionLoading === ticket.id}
-                      >
-                        {actionLoading === ticket.id ? (
-                          <RefreshCwIcon className="size-4 animate-spin" />
-                        ) : (
-                          <Undo2Icon className="size-4" />
-                        )}
-                        <span className="ml-1">Pulihkan</span>
-                      </Button>
+                    <div className="truncate text-xs text-muted-foreground capitalize">
+                      {getServiceLabel(ticket.serviceType)}
+                      {ticket.counterNumber && ` • Loket ${ticket.counterNumber}`}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {ticket.status === 'completed' ? 'Selesai' : 'Dilewati'} •{' '}
+                      <span className="tabular-nums whitespace-nowrap">{formatDateTimeId(ticket.completedAt ?? ticket.calledAt)}</span>
                     </div>
                   </div>
-                ))}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant={ticket.status === 'completed' ? 'default' : 'destructive'}>
+                    {ticket.status === 'completed' ? 'Selesai' : 'Dilewati'}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRestore(ticket.id)}
+                    disabled={actionLoading === ticket.id}
+                  >
+                    {actionLoading === ticket.id ? (
+                      <RefreshCwIcon className="animate-spin" />
+                    ) : (
+                      <Undo2Icon />
+                    )}
+                    Pulihkan
+                  </Button>
+                </div>
               </div>
-            </ScrollArea>
-          </>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -290,31 +296,38 @@ export default function AdminSettings() {
   const activeTab: TabKey = (TABS.find((t) => t.key === searchParams.get('tab'))?.key ?? 'general')
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <div className="mb-6 flex items-center gap-3">
-        <SettingsIcon className="size-6 text-muted-foreground" />
-        <div>
-          <h1 className="text-2xl font-bold">Pengaturan</h1>
-          <p className="text-sm text-muted-foreground">
-            Kelola pengaturan sistem dan tempat sampah
-          </p>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <PageHeader
+        title="Pengaturan"
+        description="Kelola identitas instansi, media TV, tiket, dan pengaturan sistem."
+      />
 
-      <div className="mb-6 flex gap-2 border-b pb-2">
-        {TABS.map((tab) => (
+      <div
+        role="tablist"
+        aria-label="Kategori pengaturan"
+        className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted p-1"
+      >
+        {TABS.map(({ key, label, icon: Icon }) => (
           <TabButton
-            key={tab.key}
-            active={activeTab === tab.key}
-            onClick={() => setSearchParams({ tab: tab.key })}
+            key={key}
+            active={activeTab === key}
+            aria-selected={activeTab === key}
+            role="tab"
+            onClick={() => setSearchParams({ tab: key })}
           >
-            {tab.label}
+            <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+            {label}
           </TabButton>
         ))}
       </div>
 
-      {activeTab === 'general' && <GeneralTab />}
-      {activeTab === 'trash' && <TrashTab />}
+      <div role="tabpanel">
+        {activeTab === 'general' && <GeneralTab />}
+        {activeTab === 'identity' && <IdentityTab />}
+        {activeTab === 'media' && <MediaTab />}
+        {activeTab === 'ticket' && <TicketTab />}
+        {activeTab === 'trash' && <TrashTab />}
+      </div>
     </div>
   )
 }

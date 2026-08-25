@@ -26,6 +26,8 @@ export async function getQueueList(params?: {
   serviceType?: string
   page?: number
   perPage?: number
+  from?: string
+  to?: string
 }): Promise<QueueTicket[]> {
   if (USE_MOCK_DATA) {
     return mockGetQueueList(params)

@@ -19,6 +19,10 @@ import {
   type WeeklyServiceChartRow,
   type WeeklyServiceKey,
 } from '../../lib/weeklyCounterChart'
+import {
+  downloadWeeklyChartCsv,
+  downloadWeeklyChartExcel,
+} from '../../lib/chartExport'
 import { SERVICE_TYPE_ORDER } from '../../lib/serviceTypes'
 
 interface ServiceSummaryChartProps {
@@ -27,53 +31,6 @@ interface ServiceSummaryChartProps {
 }
 
 const chartHeight = 420
-function escapeCsv(value: string) {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-
-  return value
-}
-
-function downloadCsv(rows: WeeklyServiceChartRow[]) {
-  const header = ['Hari', 'Pengaduan', 'PB/PD/Migrasi', 'P2TL', 'Total']
-  const lines = [
-    header.join(','),
-    ...rows.map((row) => [
-      row.label,
-      row.pengaduan,
-      row.pb_pd_migrasi,
-      row.p2tl,
-      row.total,
-    ].map((value) => escapeCsv(String(value))).join(',')),
-  ]
-
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-
-  anchor.href = url
-  anchor.download = `diagram-layanan-mingguan-${new Date().toISOString().slice(0, 10)}.csv`
-  anchor.click()
-
-  URL.revokeObjectURL(url)
-}
-
-async function downloadExcel(rows: WeeklyServiceChartRow[]) {
-  const XLSX = await import('xlsx')
-  const workbook = XLSX.utils.book_new()
-  const sheetData = rows.map((row) => ({
-    Hari: row.label,
-    Pengaduan: row.pengaduan,
-    'PB/PD/Migrasi': row.pb_pd_migrasi,
-    P2TL: row.p2tl,
-    Total: row.total,
-  }))
-  const sheet = XLSX.utils.json_to_sheet(sheetData)
-
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Mingguan')
-  XLSX.writeFile(workbook, `diagram-layanan-mingguan-${new Date().toISOString().slice(0, 10)}.xlsx`)
-}
 
 function CustomLegend() {
   return (
@@ -188,7 +145,7 @@ export function ServiceSummaryChart({ rows, embedded = false }: ServiceSummaryCh
       <Button
         variant="outline"
         size="sm"
-        onClick={() => downloadCsv(chartData)}
+        onClick={() => downloadWeeklyChartCsv(chartData)}
         disabled={empty}
       >
         <DownloadIcon />
@@ -197,7 +154,7 @@ export function ServiceSummaryChart({ rows, embedded = false }: ServiceSummaryCh
       <Button
         variant="outline"
         size="sm"
-        onClick={() => void downloadExcel(chartData)}
+        onClick={() => void downloadWeeklyChartExcel(chartData)}
         disabled={empty}
       >
         <FileSpreadsheetIcon />
