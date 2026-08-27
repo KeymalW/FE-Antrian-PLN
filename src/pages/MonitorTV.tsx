@@ -208,6 +208,10 @@ export default function MonitorTV() {
     onQueueUpdate: () => { fetchAll() },
     onQueueComplete: () => { fetchAll() },
     onQueueSkip: () => { fetchAll() },
+    onServicesUpdate: () => {
+      // Kartu layanan baru langsung muncul tanpa refresh.
+      void fetchServices()
+    },
   })
 
   useEffect(() => {

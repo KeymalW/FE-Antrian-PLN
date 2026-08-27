@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from 'react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
-import { useQueueStore, getGroupForServiceType, hasAnyActiveCall, canCallServiceType } from '../store/queueStore'
+import { useQueueStore } from '../store/queueStore'
+import { useServicesStore } from '../store/servicesStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useQueueSound } from '../hooks/useQueueSound'
+import { cn } from '../lib/utils'
 import {
   getQueueList,
   getQueueStats,
@@ -32,7 +34,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '../components/ui/dialog'
-import type { QueueTicket, QueueStats, QueueStatus, ServiceType } from '../types/queue'
+import type { QueueTicket, QueueStats } from '../types/queue'
 import {
   ActivityIcon,
   BellRingIcon,
@@ -50,11 +52,6 @@ import {
 import {
   getServiceLabel,
   getServiceSortScore,
-  SERVICE_STATUS_LABELS,
-  STATUS_BADGE_COLOR,
-  SERVICE_GROUP_LABELS,
-  getServiceGroup,
-  type ServiceGroup,
 } from '../lib/serviceTypes'
 import { buildWeeklyCounterChartData, type WeeklyServiceChartRow } from '../lib/weeklyCounterChart'
 import { formatDateId, formatDateTimeId, formatTimeId, getWeekRangeLabel } from '../lib/datetime'
@@ -64,12 +61,6 @@ const ServiceSummaryChart = lazy(() =>
     default: module.ServiceSummaryChart,
   })),
 )
-
-const ALL_GROUPS: ServiceGroup[] = ['group_a', 'group_b']
-
-function QueueStatusBadge({ status }: { status: QueueStatus }) {
-  return <Badge className={STATUS_BADGE_COLOR[status]}>{SERVICE_STATUS_LABELS[status]}</Badge>
-}
 
 function ChartSkeleton() {
   return <Skeleton className="h-[26rem] w-full rounded-xl" />
@@ -114,7 +105,6 @@ function sortWaitingTickets(tickets: QueueTicket[]) {
 }
 
 function ActiveCallCard({
-  group,
   ticket,
   now,
   actionLoading,
@@ -122,44 +112,34 @@ function ActiveCallCard({
   onRecall,
   onSkip,
 }: {
-  group: ServiceGroup
-  ticket: QueueTicket | null
+  ticket: QueueTicket
   now: Date
   actionLoading: string | null
   onComplete: (id: string) => void
   onRecall: (ticket: QueueTicket) => void
   onSkip: (id: string) => void
 }) {
-  const groupLabel = SERVICE_GROUP_LABELS[group]
-
-  if (!ticket) {
-    return (
-      <div className="rounded-xl border border-dashed border-border p-4 text-center">
-        <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
-        <div className="mt-1 text-sm text-muted-foreground">Tidak ada</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-center ring-1 ring-blue-100">
-      <div className="text-xs font-medium text-muted-foreground">{groupLabel}</div>
-      <div className="mt-2 text-4xl font-semibold tracking-tight text-emerald-600 tabular-nums">
+    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-center ring-1 ring-blue-100">
+      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        Nomor Aktif
+      </div>
+      <div className="mt-2 text-5xl font-semibold tracking-tight text-emerald-600 tabular-nums">
         {ticket.queueNumber}
       </div>
       <div className="mt-1 text-sm capitalize text-muted-foreground">
         {getServiceLabel(ticket.serviceType)}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        Loket #{ticket.counterNumber}
-      </div>
+      {ticket.counterNumber != null && (
+        <div className="mt-1 text-xs text-muted-foreground">Loket #{ticket.counterNumber}</div>
+      )}
       <div className="mt-1 text-xs tabular-nums text-muted-foreground">
         {formatDateTimeId(ticket.calledAt)}
       </div>
-      <div className="mt-0.5 text-xs font-medium text-foreground tabular-nums">
+      <div className="mt-0.5 text-xs font-medium tabular-nums text-foreground">
         Berjalan {formatElapsed(ticket.calledAt, now)}
       </div>
-      <div className="mt-3 flex justify-center gap-2">
+      <div className="mt-4 flex justify-center gap-2">
         <Button
           size="sm"
           onClick={() => onComplete(ticket.id)}
@@ -192,8 +172,20 @@ function ActiveCallCard({
 
 export default function PetugasDashboard() {
   const { user } = useAuthStore()
-  const { queueList, setQueueList, stats, setStats, activeCalls, setActiveCall, counterStatus, setCounterStatus } = useQueueStore()
+  const { queueList, setQueueList, stats, setStats, counterStatus, setCounterStatus } = useQueueStore()
+  const { services, fetchServices } = useServicesStore()
   const { playBeep, unlockAudio } = useQueueSound()
+  const [selectedCodeRaw, setSelectedCode] = useState<string | null>(null)
+  // Turunan: fallback ke layanan pertama bila belum memilih / layanan dihapus.
+  const selectedCode = useMemo(
+    () =>
+      selectedCodeRaw && services.some((s) => s.code === selectedCodeRaw)
+        ? selectedCodeRaw
+        : services[0]?.code ?? null,
+    [selectedCodeRaw, services],
+  )
+  const [activeByService, setActiveByService] = useState<Record<string, QueueTicket | null>>({})
+  const activeRef = useRef<Record<string, QueueTicket | null>>(activeByService)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [recentCompleted, setRecentCompleted] = useState<QueueTicket[]>([])
@@ -203,7 +195,27 @@ export default function PetugasDashboard() {
 
   const counterNumber = user?.counterNumber ?? 1
   const isCounterPaused = counterStatus[counterNumber] ?? false
-  const anyActive = hasAnyActiveCall(activeCalls)
+  const activeForTab = selectedCode ? activeByService[selectedCode] ?? null : null
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchServices()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchServices])
+
+  const setServiceActive = useCallback((code: string, ticket: QueueTicket | null) => {
+    activeRef.current = { ...activeRef.current, [code]: ticket }
+    setActiveByService((prev) => ({ ...prev, [code]: ticket }))
+  }, [])
+
+  const visibleQueue = useMemo(
+    () => queueList.filter((q) => q.serviceType === selectedCode),
+    [queueList, selectedCode],
+  )
+
+  const selectedName = selectedCode ? getServiceLabel(selectedCode) : null
+
   const fetchIdRef = useRef(0)
 
   useEffect(() => {
@@ -227,13 +239,19 @@ export default function PetugasDashboard() {
       setQueueList(sortWaitingTickets(list))
       setStats(statsData)
 
-      const allActive = [...calledTickets, ...servingTickets]
-      for (const group of ALL_GROUPS) {
-        const match = allActive.find(
-          (t) => getServiceGroup(t.serviceType as ServiceType) === group,
-        )
-        setActiveCall(group, match ?? null)
+      const allActive = [...calledTickets, ...servingTickets].filter(
+        (t) => t.counterNumber === counterNumber,
+      )
+      // Bangun peta aktif per kode layanan (katalog + kode tak dikenal).
+      const catalog = useServicesStore.getState().services
+      const nextMap: Record<string, QueueTicket | null> = {}
+      for (const s of catalog) nextMap[s.code] = null
+      for (const t of allActive) {
+        if (!(t.serviceType in nextMap)) nextMap[t.serviceType] = null
+        nextMap[t.serviceType] = t
       }
+      activeRef.current = nextMap
+      setActiveByService(nextMap)
 
       setRecentCompleted(sortRecentCompleted(completed))
       setServiceSummary(buildWeeklyCounterChartData(allTickets))
@@ -243,7 +261,7 @@ export default function PetugasDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [setQueueList, setStats, setActiveCall])
+  }, [counterNumber, setQueueList, setStats])
 
   useWebSocket({
     onQueueUpdate: () => {
@@ -252,8 +270,7 @@ export default function PetugasDashboard() {
     onQueueCall: (msg) => {
       const payload = msg.payload as QueueTicket
       if (payload.counterNumber === counterNumber) {
-        const group = getGroupForServiceType(payload.serviceType as ServiceType)
-        setActiveCall(group, payload)
+        setServiceActive(payload.serviceType, payload)
       }
       fetchData()
     },
@@ -262,6 +279,10 @@ export default function PetugasDashboard() {
     },
     onQueueSkip: () => {
       fetchData()
+    },
+    onServicesUpdate: () => {
+      // Tab layanan baru/berubah langsung muncul tanpa refresh.
+      void fetchServices()
     },
     onStatsUpdate: (msg) => {
       setStats(msg.payload as QueueStats)
@@ -285,9 +306,12 @@ export default function PetugasDashboard() {
     const ticket = queueList.find((t) => t.id === queueId)
     if (!ticket) return
 
-    if (!canCallServiceType(activeCalls, ticket.serviceType as ServiceType)) {
-      const group = getGroupForServiceType(ticket.serviceType as ServiceType)
-      toast.error(`Masih ada tiket aktif di ${SERVICE_GROUP_LABELS[group]}. Selesaikan terlebih dahulu.`)
+    // Guard via ref — kebal closure basi pada rantai auto-panggil.
+    const currentActive = activeRef.current[ticket.serviceType] ?? null
+    if (currentActive && currentActive.id !== ticket.id) {
+      toast.info(
+        `Masih ada antrian ${getServiceLabel(ticket.serviceType)} aktif (${currentActive.queueNumber}). Selesaikan atau lewati dulu.`,
+      )
       playBeep()
       return
     }
@@ -295,16 +319,18 @@ export default function PetugasDashboard() {
     setActionLoading(queueId)
     try {
       const result = await callQueue({ queueId, counterNumber })
-      const group = getGroupForServiceType(result.serviceType as ServiceType)
-      setActiveCall(group, result)
+      setServiceActive(ticket.serviceType, result)
       await fetchData()
-    } catch {
+    } catch (err) {
       playBeep()
-      toast.error('Gagal memanggil antrian')
+      const backendMsg = (
+        err as { response?: { data?: { message?: string } } }
+      )?.response?.data?.message
+      toast.error(backendMsg ?? 'Gagal memanggil antrian')
     } finally {
       setActionLoading(null)
     }
-  }, [isCounterPaused, playBeep, queueList, activeCalls, setActionLoading, counterNumber, setActiveCall, fetchData])
+  }, [isCounterPaused, playBeep, queueList, counterNumber, fetchData, setServiceActive])
 
   const handleSkip = useCallback(async (queueId: string) => {
     setActionLoading(queueId)
@@ -320,15 +346,28 @@ export default function PetugasDashboard() {
 
   const handleComplete = useCallback(async (queueId: string) => {
     setActionLoading(queueId)
+    // Catat layanan tiket yang selesai — auto-panggil hanya se-layanan.
+    const completedCode =
+      useQueueStore.getState().queueList.find((t) => t.id === queueId)?.serviceType ?? null
     try {
       await completeQueue(queueId)
       await fetchData()
+
+      // Auto-panggil tiket berikutnya dalam layanan yang sama (bila loket aktif).
+      if (!isCounterPaused && completedCode) {
+        const next =
+          useQueueStore.getState().queueList.find((t) => t.serviceType === completedCode) ?? null
+        if (next) {
+          unlockAudio()
+          await handleCall(next.id)
+        }
+      }
     } catch {
       toast.error('Gagal menyelesaikan antrian')
     } finally {
       setActionLoading(null)
     }
-  }, [setActionLoading, fetchData])
+  }, [isCounterPaused, fetchData, handleCall, unlockAudio])
 
   const handleRecall = useCallback(async (ticket: QueueTicket) => {
     setActionLoading(ticket.id)
@@ -359,15 +398,9 @@ export default function PetugasDashboard() {
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
 
   const findNextCallable = useCallback(() => {
-    for (const ticket of queueList) {
-      if (canCallServiceType(activeCalls, ticket.serviceType as ServiceType)) {
-        return ticket
-      }
-    }
-    return null
-  }, [queueList, activeCalls])
-
-  const firstActiveTicket = activeCalls.group_a ?? activeCalls.group_b
+    // Daftar tab sudah terfilter layanan — ambil teratas.
+    return visibleQueue[0] ?? null
+  }, [visibleQueue])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -379,7 +412,7 @@ export default function PetugasDashboard() {
         case 'C':
         case ' ': {
           e.preventDefault()
-          if (isCounterPaused || queueList.length === 0) break
+          if (isCounterPaused || visibleQueue.length === 0) break
           const next = findNextCallable()
           if (next) {
             unlockAudio()
@@ -392,23 +425,23 @@ export default function PetugasDashboard() {
         case 's':
         case 'S':
           e.preventDefault()
-          if (queueList.length > 0) {
-            handleSkip(queueList[0].id)
+          if (visibleQueue.length > 0) {
+            handleSkip(visibleQueue[0].id)
           }
           break
         case 'Enter':
-          if (firstActiveTicket) {
+          if (activeForTab) {
             e.preventDefault()
             unlockAudio()
-            handleComplete(firstActiveTicket.id)
+            handleComplete(activeForTab.id)
           }
           break
         case 'r':
         case 'R':
-          if (firstActiveTicket) {
+          if (activeForTab) {
             e.preventDefault()
             unlockAudio()
-            handleRecall(firstActiveTicket)
+            handleRecall(activeForTab)
           }
           break
         case 'i':
@@ -427,9 +460,10 @@ export default function PetugasDashboard() {
   }, [
     isCounterPaused,
     queueList,
-    activeCalls,
+    visibleQueue,
+    selectedCode,
+    activeForTab,
     counterNumber,
-    firstActiveTicket,
     findNextCallable,
     handleCall,
     handleComplete,
@@ -470,6 +504,47 @@ export default function PetugasDashboard() {
         }
       />
 
+      {/* Tab jalur per layanan */}
+      <div role="tablist" aria-label="Pilih layanan" className="flex flex-wrap items-center gap-2">
+        {services
+          .filter((s) => s.isActive)
+          .map((s) => {
+            const count = queueList.filter((q) => q.serviceType === s.code).length
+            const isActiveTab = s.code === selectedCode
+            return (
+              <button
+                key={s.id}
+                role="tab"
+                aria-selected={isActiveTab}
+                onClick={() => setSelectedCode(s.code)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
+                  isActiveTab
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {getServiceLabel(s.code)}
+                {!isActiveTab && activeByService[s.code] && (
+                  <span
+                    className="size-1.5 rounded-full bg-emerald-500"
+                    aria-hidden="true"
+                    title="Ada tiket aktif di layanan ini"
+                  />
+                )}
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums',
+                    isActiveTab ? 'bg-primary-foreground/20' : 'bg-card',
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+      </div>
+
       <section aria-label="Statistik antrian">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {stats ? (
@@ -497,11 +572,14 @@ export default function PetugasDashboard() {
           <Card>
             <CardHeader className="[.border-b]:pb-4">
               <div>
-                <CardTitle>Antrian Menunggu</CardTitle>
-                <CardDescription>{queueList.length} tiket dalam antrean</CardDescription>
+                <CardTitle>
+                  Antrian Menunggu
+                  {selectedCode ? ` — ${getServiceLabel(selectedCode)}` : ''}
+                </CardTitle>
+                <CardDescription>{visibleQueue.length} tiket dalam antrean</CardDescription>
               </div>
               <Badge variant="secondary" className="tabular-nums">
-                {queueList.length}
+                {visibleQueue.length}
               </Badge>
             </CardHeader>
             <CardContent>
@@ -511,9 +589,9 @@ export default function PetugasDashboard() {
                 </div>
               )}
 
-              {anyActive && !isCounterPaused && (
+              {activeForTab && !isCounterPaused && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                  Selesaikan antrian yang sedang dilayani terlebih dahulu. Hanya antrian dari layanan berbeda yang bisa dipanggil bersamaan.
+                  Antrian aktif sedang berjalan ({activeForTab.queueNumber}). Selesaikan atau lewati sebelum memanggil berikutnya.
                 </div>
               )}
 
@@ -523,62 +601,58 @@ export default function PetugasDashboard() {
                     <Skeleton key={i} className="h-14 w-full rounded-lg" />
                   ))}
                 </div>
-              ) : queueList.length === 0 ? (
+              ) : visibleQueue.length === 0 ? (
                 <EmptyState
                   icon={InboxIcon}
-                  title="Tidak ada antrian"
-                  description="Semua antrian sudah selesai."
+                  title="Tidak ada antrian untuk layanan ini"
+                  description="Pilih tab layanan lain atau tunggu tiket baru."
                   compact
                 />
               ) : (
                 <div className="max-h-72 overflow-auto">
-                  <div className="min-w-[560px]">
-                    {queueList.map((q) => {
-                      const ticketGroup = getGroupForServiceType(q.serviceType as ServiceType)
-                      const isBlocked = !canCallServiceType(activeCalls, q.serviceType as ServiceType)
-
-                      return (
-                        <div
-                          key={q.id}
-                          className="flex items-center justify-between gap-3 border-b border-border/70 py-3 transition-colors last:border-b-0 hover:bg-muted/40"
-                        >
-                          <div className="grid min-w-0 flex-1 grid-cols-[4.5rem_minmax(0,12rem)_auto] items-center gap-3">
-                            <span className="text-lg font-semibold tabular-nums text-foreground">
-                              {q.queueNumber}
+                  <div className="min-w-[520px]">
+                    {queueList.map((q) => (
+                      <div
+                        key={q.id}
+                        className="flex items-center justify-between gap-3 border-b border-border/70 py-3 transition-colors last:border-b-0 hover:bg-muted/40"
+                      >
+                        <div className="grid min-w-0 flex-1 grid-cols-[4.5rem_minmax(0,14rem)] items-center gap-3">
+                          <span className="text-lg font-semibold tabular-nums text-foreground">
+                            {q.queueNumber}
+                          </span>
+                          <div className="flex min-w-0 flex-col">
+                            <span className="truncate text-sm capitalize text-muted-foreground">
+                              {getServiceLabel(q.serviceType)}
                             </span>
-                            <div className="flex min-w-0 flex-col">
-                              <span className="truncate text-sm capitalize text-muted-foreground">
-                                {getServiceLabel(q.serviceType)}
-                              </span>
-                              <span className="truncate text-[11px] tabular-nums text-muted-foreground">
-                                Dicetak {formatDateTimeId(q.createdAt)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <QueueStatusBadge status={q.status} />
-                              {isBlocked && (
-                                <Badge className="bg-amber-100 text-amber-700 text-[10px]">
-                                  {SERVICE_GROUP_LABELS[ticketGroup]}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleCall(q.id)}
-                              disabled={actionLoading === q.id || isCounterPaused || isBlocked}
-                            >
-                              {actionLoading === q.id && <Spinner data-icon="inline-start" />}
-                              Panggil
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleSkip(q.id)}>
-                              Skip
-                            </Button>
+                            <span className="truncate text-[11px] tabular-nums text-muted-foreground">
+                              Dicetak {formatDateTimeId(q.createdAt)}
+                            </span>
                           </div>
                         </div>
-                      )
-                    })}
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleCall(q.id)}
+                            disabled={
+                              actionLoading === q.id ||
+                              isCounterPaused ||
+                              !!activeForTab
+                            }
+                          >
+                            {actionLoading === q.id && <Spinner data-icon="inline-start" />}
+                            Panggil
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSkip(q.id)}
+                            disabled={actionLoading === q.id}
+                          >
+                            Skip
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -621,22 +695,33 @@ export default function PetugasDashboard() {
             <CardHeader className="[.border-b]:pb-4">
               <div>
                 <CardTitle>Sedang Dilayani</CardTitle>
-                <CardDescription>Antrian aktif per grup layanan.</CardDescription>
+                <CardDescription>
+                  {selectedName ? `Layanan ${selectedName}` : 'Loket Anda'}
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {ALL_GROUPS.map((group) => (
+            <CardContent>
+              {activeForTab ? (
                 <ActiveCallCard
-                  key={group}
-                  group={group}
-                  ticket={activeCalls[group]}
+                  ticket={activeForTab}
                   now={now}
                   actionLoading={actionLoading}
                   onComplete={handleComplete}
                   onRecall={handleRecall}
                   onSkip={handleSkip}
                 />
-              ))}
+              ) : (
+                <EmptyState
+                  icon={UserCheckIcon}
+                  title="Belum ada tiket aktif"
+                  description={
+                    selectedName
+                      ? `Tekan Panggil untuk memulai ${selectedName}.`
+                      : 'Pilih tab layanan lalu tekan Panggil.'
+                  }
+                  compact
+                />
+              )}
             </CardContent>
           </Card>
 

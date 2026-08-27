@@ -34,7 +34,6 @@ import {
 } from 'lucide-react'
 import { CURATED_KIOSK_ICONS, getKioskIconComponent } from '../lib/kioskIcons'
 import type { ServiceDefinition } from '../types/admin'
-import type { ServiceGroup } from '../lib/serviceTypes'
 
 interface ServiceFormState {
   name: string
@@ -42,7 +41,6 @@ interface ServiceFormState {
   prefix: string
   counterNumber: string
   icon: string
-  serviceGroup: ServiceGroup
   isActive: boolean
   showInKiosk: boolean
 }
@@ -53,7 +51,6 @@ const EMPTY_FORM: ServiceFormState = {
   prefix: '',
   counterNumber: '',
   icon: '',
-  serviceGroup: 'group_a',
   isActive: true,
   showInKiosk: true,
 }
@@ -120,7 +117,6 @@ export default function AdminServices() {
       prefix: service.prefix,
       counterNumber: service.counterNumber != null ? String(service.counterNumber) : '',
       icon: service.icon ?? '',
-      serviceGroup: service.serviceGroup,
       isActive: service.isActive,
       showInKiosk: service.showInKiosk,
     })
@@ -137,7 +133,6 @@ export default function AdminServices() {
         prefix: form.prefix.toUpperCase(),
         counterNumber: form.counterNumber.trim() !== '' ? Number(form.counterNumber) : null,
         icon: form.icon || null,
-        serviceGroup: form.serviceGroup,
         isActive: form.isActive,
         showInKiosk: form.showInKiosk,
       }
@@ -372,37 +367,20 @@ export default function AdminServices() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="service-counter">Nomor Loket (TV)</Label>
-                <Input
-                  id="service-counter"
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={form.counterNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, counterNumber: e.target.value }))}
-                  placeholder="cth. 1"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="service-group">Grup Panggil</Label>
-                <select
-                  id="service-group"
-                  value={form.serviceGroup}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, serviceGroup: e.target.value as ServiceGroup }))
-                  }
-                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="group_a">Grup A — Pengaduan & PB/PD</option>
-                  <option value="group_b">Grup B — P2TL</option>
-                </select>
-              </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="service-counter">Nomor Loket (TV)</Label>
+              <Input
+                id="service-counter"
+                type="number"
+                min={1}
+                max={99}
+                value={form.counterNumber}
+                onChange={(e) => setForm((f) => ({ ...f, counterNumber: e.target.value }))}
+                placeholder="cth. 1"
+              />
             </div>
             <p className="-mt-0.5 text-[11px] text-muted-foreground">
               Nomor loket mengaitkan layanan ke kartu TV display; kosongkan bila tidak tampil di TV.
-              Layanan dalam grup yang sama tidak bisa dipanggil bersamaan di satu loket.
             </p>
             <div className="grid grid-cols-[1fr_auto] items-end gap-3">
               <div className="grid gap-1.5">

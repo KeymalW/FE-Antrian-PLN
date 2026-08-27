@@ -16,15 +16,10 @@ function makeTicket(overrides: Partial<QueueTicket> = {}): QueueTicket {
   }
 }
 
-function emptyActiveCalls() {
-  return { group_a: null, group_b: null }
-}
-
 describe('queueStore', () => {
   beforeEach(() => {
     useQueueStore.setState({
       queueList: [],
-      activeCalls: emptyActiveCalls(),
       stats: null,
       counterStatus: {},
     })
@@ -35,30 +30,6 @@ describe('queueStore', () => {
       const tickets = [makeTicket({ id: '1' }), makeTicket({ id: '2' })]
       useQueueStore.getState().setQueueList(tickets)
       expect(useQueueStore.getState().queueList).toHaveLength(2)
-    })
-  })
-
-  describe('setActiveCall', () => {
-    it('sets active call for a group', () => {
-      const ticket = makeTicket({ id: '10', status: 'called', serviceType: 'pengaduan' })
-      useQueueStore.getState().setActiveCall('group_a', ticket)
-      expect(useQueueStore.getState().activeCalls.group_a?.id).toBe('10')
-      expect(useQueueStore.getState().activeCalls.group_b).toBeNull()
-    })
-
-    it('clears active call with null', () => {
-      useQueueStore.getState().setActiveCall('group_a', makeTicket())
-      useQueueStore.getState().setActiveCall('group_a', null)
-      expect(useQueueStore.getState().activeCalls.group_a).toBeNull()
-    })
-
-    it('supports two independent active calls', () => {
-      const ticketA = makeTicket({ id: '1', serviceType: 'pengaduan', status: 'called' })
-      const ticketB = makeTicket({ id: '2', serviceType: 'p2tl', status: 'serving' })
-      useQueueStore.getState().setActiveCall('group_a', ticketA)
-      useQueueStore.getState().setActiveCall('group_b', ticketB)
-      expect(useQueueStore.getState().activeCalls.group_a?.id).toBe('1')
-      expect(useQueueStore.getState().activeCalls.group_b?.id).toBe('2')
     })
   })
 
@@ -82,24 +53,6 @@ describe('queueStore', () => {
       const list = useQueueStore.getState().queueList
       expect(list[0].status).toBe('called')
       expect(list[1].status).toBe('waiting')
-    })
-
-    it('updates matching activeCalls entry', () => {
-      useQueueStore.getState().setActiveCall(
-        'group_a',
-        makeTicket({ id: '5', status: 'called' }),
-      )
-      useQueueStore.getState().updateTicket('5', { status: 'serving' })
-      expect(useQueueStore.getState().activeCalls.group_a?.status).toBe('serving')
-    })
-
-    it('does not update non-matching activeCalls entry', () => {
-      useQueueStore.getState().setActiveCall(
-        'group_a',
-        makeTicket({ id: '5', status: 'called' }),
-      )
-      useQueueStore.getState().updateTicket('99', { status: 'serving' })
-      expect(useQueueStore.getState().activeCalls.group_a?.status).toBe('called')
     })
   })
 

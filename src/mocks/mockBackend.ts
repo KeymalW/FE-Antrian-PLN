@@ -615,35 +615,34 @@ export function mockTakeTicket(serviceType: ServiceType): QueueTicket {
   return clone(ticket)
 }
 
-function getGroupForService(serviceType: string): string {
-  const service = mockState.serviceCatalog.find((s) => s.code === serviceType)
-  return (service?.serviceGroup as string | undefined) ?? 'group_a'
-}
-
 export function mockCallQueue(payload: CallRequest): QueueTicket {
   const ticket = mockState.tickets.find((t) => t.id === payload.queueId)
   if (!ticket) throw new Error('Ticket not found')
 
-  const calledGroup = getGroupForService(ticket.serviceType)
+  // Model jalur per layanan — paritas dengan backend:
+  // hanya layanan yang SAMA yang diblokir di satu loket.
+  const serviceName =
+    mockState.serviceCatalog.find((s) => s.code === ticket.serviceType)?.name ??
+    ticket.serviceType
 
-  const now = new Date().toISOString()
-  for (const t of mockState.tickets) {
-    if (
+  const activeDuplicate = mockState.tickets.find(
+    (t) =>
+      t.id !== payload.queueId &&
       (t.status === 'called' || t.status === 'serving') &&
       t.counterNumber === payload.counterNumber &&
-      getGroupForService(t.serviceType) === calledGroup
-    ) {
-      t.status = 'completed'
-      t.completedAt = now
-    }
+      t.serviceType === payload.serviceType,
+  )
+  if (activeDuplicate) {
+    throw new Error(
+      `Masih ada antrian aktif ${serviceName} (${activeDuplicate.queueNumber}) di Loket ${payload.counterNumber}. Selesaikan atau lewati terlebih dahulu.`,
+    )
   }
-  saveState()
 
   return updateTicket(payload.queueId, (t) => ({
     ...t,
     status: 'called',
     counterNumber: payload.counterNumber,
-    calledAt: now,
+    calledAt: new Date().toISOString(),
     completedAt: null,
   }))
 }
