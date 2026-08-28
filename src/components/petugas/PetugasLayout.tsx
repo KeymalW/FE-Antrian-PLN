@@ -33,7 +33,11 @@ export function PetugasLayout() {
   return (
     <div className="admin-theme min-h-screen bg-background">
       {/* Header tipis — logo instansi kiri, identitas petugas kanan */}
-      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/85 px-4 backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/85 px-4 backdrop-blur sm:px-6 relative">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-blue-600"
+          aria-hidden="true"
+        />
         <div className="flex min-w-0 items-center gap-3">
           <img
             key={logoUrl}

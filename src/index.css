@@ -323,37 +323,37 @@ dialog::backdrop {
 }
 
 /*
- * Admin theme — neutral enterprise palette (white / soft gray / dark charcoal).
- * Scope: hanya berlaku di dalam wrapper .admin-theme (AdminLayout).
+ * Admin/Petugas theme — biru halus sebagai aksen (tetap netral, tidak PLN-heavy).
+ * Scope: hanya di dalam wrapper .admin-theme (AdminLayout & PetugasLayout).
  */
 .admin-theme {
   --radius: 0.7rem;
-  --background: oklch(0.977 0.003 247);
-  --foreground: oklch(0.24 0.014 258);
+  --background: oklch(0.973 0.008 255);
+  --foreground: oklch(0.24 0.02 258);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.014 258);
+  --card-foreground: oklch(0.24 0.02 258);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.014 258);
-  --primary: oklch(0.27 0.02 258);
-  --primary-foreground: oklch(0.985 0.001 248);
-  --secondary: oklch(0.955 0.004 252);
-  --secondary-foreground: oklch(0.3 0.02 258);
-  --muted: oklch(0.961 0.004 252);
-  --muted-foreground: oklch(0.52 0.015 256);
-  --accent: oklch(0.949 0.005 252);
-  --accent-foreground: oklch(0.28 0.02 258);
+  --popover-foreground: oklch(0.24 0.02 258);
+  --primary: oklch(0.53 0.19 262);
+  --primary-foreground: oklch(0.985 0.005 255);
+  --secondary: oklch(0.95 0.02 255);
+  --secondary-foreground: oklch(0.32 0.08 262);
+  --muted: oklch(0.958 0.015 255);
+  --muted-foreground: oklch(0.52 0.02 256);
+  --accent: oklch(0.94 0.03 255);
+  --accent-foreground: oklch(0.32 0.08 262);
   --destructive: oklch(0.55 0.21 27);
-  --border: oklch(0.91 0.005 254);
-  --input: oklch(0.91 0.005 254);
-  --ring: oklch(0.53 0.05 256);
-  --chart-1: oklch(0.45 0.18 260);
+  --border: oklch(0.91 0.02 255);
+  --input: oklch(0.91 0.02 255);
+  --ring: oklch(0.53 0.19 262);
+  --chart-1: oklch(0.53 0.19 262);
   --chart-2: oklch(0.7 0.14 70);
   --chart-3: oklch(0.55 0.15 150);
   --chart-4: oklch(0.62 0.11 245);
   --chart-5: oklch(0.35 0.03 258);
-  /* Alias warna lama yang dipakai komponen bersama → netral hanya di area admin */
-  --color-pln-teal: oklch(0.27 0.02 258);
-  --color-pln-cyan: oklch(0.6 0.11 245);
+  /* Alias warna lama yang dipakai komponen bersama → kini sinkron ke biru aksen di area admin */
+  --color-pln-teal: oklch(0.53 0.19 262);
+  --color-pln-cyan: oklch(0.68 0.13 235);
 }
 
 .admin-theme ::-webkit-scrollbar {
