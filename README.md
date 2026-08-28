@@ -4,15 +4,15 @@ Sistem antrian digital PLN — kiosk ambil tiket, tracking real-time, monitor TV
 
 ## Fitur
 
-- **Kiosk** — ambil tiket QR, cetak otomatis, redirect ke halaman tracking
-- **Track Ticket** — pantau status antrian via QR scan, link demo kalo tiket gak ditemukan
+- **Kiosk** — ambil tiket fisik, cetak otomatis, redirect ke halaman tiket
+- **Tiket** — tampilkan nomor & status antrian, cetak tiket fisik (tanpa QR)
 - **Monitor TV** — tampilan real-time per counter, status istirahat
 - **Petugas Dashboard** — panggil/skip/complete tiket, grafik mingguan, toggle istirahat
 - **Admin Dashboard** — overview multi-counter, full stats, riwayat global, export Excel
 
 ## Tech Stack
 
-React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, qrcode.react, xlsx, react-router-dom v7
+React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, Recharts, shadcn/ui, xlsx, react-router-dom v7
 
 ## Prasyarat
 
@@ -71,7 +71,6 @@ Aktifkan dengan `VITE_USE_MOCK_DATA=true` di `.env` — semua service (auth, que
 | -------------------- | ---------------------------------------- | --------------------------- |
 | `VITE_API_URL`       | `http://localhost/antrian-pln/public/api` | Base URL backend API       |
 | `VITE_WS_URL`        | `ws://localhost:3001`                    | WebSocket URL real-time     |
-| `VITE_PUBLIC_URL`    | `http://localhost:5173`                  | URL untuk QR code           |
 | `VITE_USE_MOCK_DATA` | `true`                                   | Pakai mock backend          |
 
 ## Mock Credentials
@@ -88,9 +87,9 @@ Aktifkan dengan `VITE_USE_MOCK_DATA=true` di `.env` — semua service (auth, que
 | Path              | Halaman                          |
 | ----------------- | -------------------------------- |
 | `/`               | Landing page (navigasi 3 card)   |
-| `/kiosk`          | Kiosk (ambil tiket)              |
+| `/kiosk`          | Kiosk (ambil tiket fisik)        |
 | `/login`          | Login form                       |
-| `/track/:id`      | Track tiket                      |
+| `/track/:id`      | Tiket (cetak fisik)              |
 | `/monitor`        | Monitor TV                       |
 | `/petugas`        | Dashboard petugas                |
 | `/admin`          | Dashboard admin                  |

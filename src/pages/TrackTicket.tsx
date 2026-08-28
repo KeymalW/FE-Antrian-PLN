@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { QRCodeCanvas } from 'qrcode.react'
 import { getTicketById, getQueueList } from '../services/queue'
 import {
   Clock,
@@ -36,9 +35,6 @@ export default function TrackTicket() {
   const [error, setError] = useState('')
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
-
-  const baseUrl = import.meta.env.VITE_PUBLIC_URL ?? window.location.origin
-  const qrValue = id ? `${baseUrl}/track/${id}` : ''
 
   useEffect(() => {
     if (!id) return
@@ -150,14 +146,8 @@ export default function TrackTicket() {
                 {ticket.queueNumber}
               </div>
 
-              <div className="mb-4 text-sm capitalize text-muted-foreground">
+              <div className="mb-6 text-sm capitalize text-muted-foreground">
                 Layanan: {ticket.serviceType}
-              </div>
-
-              <div className="mb-6 flex justify-center">
-                <div className="inline-block rounded-lg bg-white p-2 ring-1 ring-pln-cyan/20">
-                  <QRCodeCanvas value={qrValue} size={140} level="M" />
-                </div>
               </div>
 
               {ticket.status === 'waiting' && queuePosition !== null && (
@@ -235,10 +225,6 @@ export default function TrackTicket() {
           <div className="print-title">TIKET ANTRIAN</div>
           <div className="print-number">{ticket.queueNumber}</div>
           <div className="print-service">{ticket.serviceType}</div>
-          <div className="print-divider" />
-          <div className="print-qr">
-            <QRCodeCanvas value={qrValue} size={180} level="M" />
-          </div>
           <div className="print-divider" />
           <div className="print-footer">
             <div>{new Date(ticket.createdAt).toLocaleDateString('id-ID')}</div>
