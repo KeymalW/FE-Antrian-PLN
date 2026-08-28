@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getTicketById, getQueueList } from '../services/queue'
+import { getTicketTextSettings, getGeneralSettings } from '../services/settings'
+import type { TicketTextSettings } from '../types/admin'
 import {
   Clock,
   CheckCircle2,
@@ -35,6 +37,27 @@ export default function TrackTicket() {
   const [error, setError] = useState('')
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
+  const [ticketText, setTicketText] = useState<TicketTextSettings>({
+    headerText: 'TIKET ANTRIAN',
+    subHeaderText: '',
+    footerMessage: 'Silakan tunggu nomor Anda dipanggil',
+  })
+  const [institutionName, setInstitutionName] = useState('PT PLN (Persero)')
+
+  useEffect(() => {
+    let cancelled = false
+    getTicketTextSettings()
+      .then((data) => {
+        if (!cancelled) setTicketText(data)
+      })
+      .catch(() => {})
+    getGeneralSettings()
+      .then((data) => {
+        if (!cancelled && data.institutionName?.trim()) setInstitutionName(data.institutionName.trim())
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -221,8 +244,11 @@ export default function TrackTicket() {
 
       <div ref={printRef} className="print-only">
         <div className="print-ticket">
-          <div className="print-header">PT PLN (Persero)</div>
-          <div className="print-title">TIKET ANTRIAN</div>
+          <div className="print-header">{institutionName}</div>
+          <div className="print-title">{ticketText.headerText || 'TIKET ANTRIAN'}</div>
+          {ticketText.subHeaderText && (
+            <div className="print-service" style={{ fontSize: '11px', marginTop: '2px' }}>{ticketText.subHeaderText}</div>
+          )}
           <div className="print-number">{ticket.queueNumber}</div>
           <div className="print-service">{ticket.serviceType}</div>
           <div className="print-divider" />
@@ -230,7 +256,7 @@ export default function TrackTicket() {
             <div>{new Date(ticket.createdAt).toLocaleDateString('id-ID')}</div>
             <div>{new Date(ticket.createdAt).toLocaleTimeString('id-ID')}</div>
           </div>
-          <div className="print-message">Silakan tunggu nomor Anda dipanggil</div>
+          <div className="print-message">{ticketText.footerMessage || 'Silakan tunggu nomor Anda dipanggil'}</div>
         </div>
       </div>
     </>
