@@ -89,21 +89,23 @@ export default function Register() {
               />
             </div>
 
-            <div className="relative">
-              <User className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-gray-400" />
-              <Input
-                id="username"
-                className="h-11 rounded-xl border-gray-200 bg-white pl-10"
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                minLength={3}
-                maxLength={50}
-                autoComplete="username"
-                aria-label="Username"
-              />
+            <div>
+              <div className="relative">
+                <User className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="username"
+                  className="h-11 rounded-xl border-gray-200 bg-white pl-10"
+                  type="text"
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
+                  maxLength={50}
+                  autoComplete="username"
+                  aria-label="Username"
+                />
+              </div>
               <p className="mt-1.5 text-[11px] text-muted-foreground">Huruf/angka, dash/underscore, min 3 karakter</p>
             </div>
 
