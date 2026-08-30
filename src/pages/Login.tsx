@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { User, Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { User, Lock, UserPlus } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { checkAdminExists, login as loginApi } from '../services/auth'
 import { getRoleHome } from '../lib/roles'
@@ -135,12 +135,25 @@ export default function Login() {
           </form>
 
           {adminExists === false && (
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Belum ada admin?{' '}
-              <Link to="/register" className="font-medium text-primary hover:underline">
+            <div className="mt-6">
+              <div className="relative flex items-center gap-3 py-2">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">atau</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full rounded-full font-semibold"
+                onClick={() => navigate('/register')}
+              >
+                <UserPlus className="size-4" data-icon="inline-start" />
                 Daftar sebagai Admin
-              </Link>
-            </p>
+              </Button>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Hanya untuk admin pertama — setelah itu menu ini hilang
+              </p>
+            </div>
           )}
         </div>
       </div>
