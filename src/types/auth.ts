@@ -6,6 +6,14 @@ export interface User {
   name: string
   role: UserRole
   counterNumber: number | null
+  tenantId?: number | null
+  tenantSlug?: string | null
+}
+
+export interface Tenant {
+  id: number
+  name: string
+  slug: string
 }
 
 export interface LoginRequest {
@@ -16,9 +24,11 @@ export interface LoginRequest {
 export interface LoginResponse {
   user: User
   token: string
+  tenant?: Tenant
 }
 
 export interface RegisterRequest {
+  companyName: string
   name: string
   username: string
   password: string

@@ -552,19 +552,25 @@ export function mockLogin(username: string, password: string): LoginResponse {
 }
 
 export function mockAdminExists(): boolean {
-  return mockState.accounts.some((entry) => entry.user.role === 'admin')
+  // Multi-tenant: true only when 5 tenants reached (for demo limit)
+  const tenantCount = (mockState as unknown as { tenants?: unknown[] }).tenants?.length ?? (mockState.accounts.some((e) => e.user.role === 'admin') ? 1 : 0)
+  return tenantCount >= 5
 }
 
 export function mockRegister(payload: {
+  companyName?: string
   name: string
   username: string
   password: string
   password_confirmation: string
 }): LoginResponse {
-  if (mockAdminExists()) {
-    throw new Error('Admin sudah ada. Silakan login atau hubungi admin untuk membuat akun baru.')
+  const rawState = mockState as unknown as { tenants?: Array<{ id: number; slug: string; name: string }> }
+  if (!rawState.tenants) rawState.tenants = [{ id: 1, slug: 'qserve-default', name: 'QServe Default' }]
+  if (rawState.tenants.length >= 5) {
+    throw new Error('Batas perusahaan tercapai (maks 5 untuk demo PKL).')
   }
 
+  const companyName = (payload.companyName ?? '').trim() || 'Perusahaan Baru'
   const name = payload.name.trim()
   const username = payload.username.trim().toLowerCase()
   const password = payload.password
@@ -578,13 +584,22 @@ export function mockRegister(payload: {
     throw new Error('Username sudah digunakan')
   }
 
+  const newTenantId = Math.max(0, ...rawState.tenants.map((t) => t.id)) + 1
+  const slugBase = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `company-${newTenantId}`
+  let slug = slugBase
+  let i = 2
+  while (rawState.tenants.some((t) => t.slug === slug)) slug = `${slugBase}-${i++}`
+  const tenant = { id: newTenantId, slug, name: companyName }
+  rawState.tenants.push(tenant)
+
   const user: User = {
     id: `user-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     username,
     name,
     role: 'admin',
     counterNumber: null,
-  }
+    tenantId: newTenantId,
+  } as unknown as User
   mockState.accounts.push({ user, password })
   saveState()
 

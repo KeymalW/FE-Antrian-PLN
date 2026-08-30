@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { User, Lock, UserRound } from 'lucide-react'
+import { Building2, User, Lock, UserRound } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { register as registerApi } from '../services/auth'
 import { Button } from '../components/ui/button'
@@ -9,6 +9,7 @@ import { Spinner } from '../components/ui/spinner'
 import { QServeLogo } from '../components/layout/QServeLogo'
 
 export default function Register() {
+  const [companyName, setCompanyName] = useState('')
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -27,9 +28,15 @@ export default function Register() {
       return
     }
 
+    if (!companyName.trim()) {
+      setError('Nama perusahaan wajib diisi')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await registerApi({
+        companyName: companyName.trim(),
         name: name.trim(),
         username: username.trim(),
         password,
@@ -66,20 +73,36 @@ export default function Register() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center text-center">
             <QServeLogo className="mb-6 h-10 w-auto" />
-            <h1 className="text-3xl font-bold tracking-tight text-primary">Daftar Admin</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Daftar Perusahaan</h1>
             <p className="mt-2 text-sm text-[#4a74c0]">
-              Buat akun admin pertama — setelah itu kelola layanan & akun lain dari dashboard
+              Buat perusahaan & admin — tiap perusahaan punya layanan & antrian terpisah di QServe.com
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="relative">
+              <Building2 className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-gray-400" />
+              <Input
+                id="companyName"
+                className="h-11 rounded-xl border-gray-200 bg-white pl-10"
+                type="text"
+                placeholder="Nama perusahaan (mis. PT Maju Jaya)"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                required
+                maxLength={100}
+                autoComplete="organization"
+                aria-label="Nama perusahaan"
+              />
+            </div>
+
             <div className="relative">
               <UserRound className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-gray-400" />
               <Input
                 id="name"
                 className="h-11 rounded-xl border-gray-200 bg-white pl-10"
                 type="text"
-                placeholder="Nama lengkap"
+                placeholder="Nama lengkap admin"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -159,7 +182,7 @@ export default function Register() {
             </Link>
           </p>
           <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-            Halaman ini hanya aktif jika belum ada admin. Setelah admin pertama dibuat, pendaftaran akan terkunci.
+            Maksimal 5 perusahaan untuk demo PKL. Tiap perusahaan terisolasi — admin perusahaan lain tidak bisa lihat antrianmu.
           </p>
         </div>
       </div>

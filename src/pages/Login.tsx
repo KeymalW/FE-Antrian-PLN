@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, Lock, UserPlus } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-import { checkAdminExists, login as loginApi } from '../services/auth'
+import { login as loginApi } from '../services/auth'
 import { getRoleHome } from '../lib/roles'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -21,17 +21,8 @@ export default function Login() {
   )
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [adminExists, setAdminExists] = useState<boolean | null>(null)
   const { login } = useAuthStore()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    let cancelled = false
-    checkAdminExists()
-      .then((exists) => { if (!cancelled) setAdminExists(exists) })
-      .catch(() => { if (!cancelled) setAdminExists(true) })
-    return () => { cancelled = true }
-  }, [])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -134,27 +125,25 @@ export default function Login() {
             </Button>
           </form>
 
-          {adminExists === false && (
-            <div className="mt-6">
-              <div className="relative flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">atau</span>
-                <span className="h-px flex-1 bg-border" />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 w-full rounded-full font-semibold"
-                onClick={() => navigate('/register')}
-              >
-                <UserPlus className="size-4" data-icon="inline-start" />
-                Daftar sebagai Admin
-              </Button>
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Hanya untuk admin pertama — setelah itu menu ini hilang
-              </p>
+          <div className="mt-6">
+            <div className="relative flex items-center gap-3 py-2">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">atau</span>
+              <span className="h-px flex-1 bg-border" />
             </div>
-          )}
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-full font-semibold"
+              onClick={() => navigate('/register')}
+            >
+              <UserPlus className="size-4" data-icon="inline-start" />
+              Daftar Perusahaan Baru
+            </Button>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Tiap perusahaan terisolasi — maksimal 5 perusahaan di QServe.com
+            </p>
+          </div>
         </div>
       </div>
     </div>
