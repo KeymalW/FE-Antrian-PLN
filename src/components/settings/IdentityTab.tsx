@@ -70,15 +70,15 @@ export function IdentityTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-            Identitas Instansi
+            Identitas Perusahaan
           </CardTitle>
           <CardDescription>
-            Nama dan logo ini tampil di sidebar admin dan dapat diubah kapan saja.
+            Nama dan logo ini tampil di sidebar admin, kiosk, dan tiket. Diisi otomatis dari nama perusahaan saat daftar, dapat diubah kapan saja.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-1.5">
-            <Label htmlFor="identity-name">Nama Instansi / Aplikasi</Label>
+            <Label htmlFor="identity-name">Nama Perusahaan</Label>
             <Input
               id="identity-name"
               value={institutionName}
