@@ -1,7 +1,7 @@
 import { get, post } from './api'
 import { USE_MOCK_DATA } from '../mocks/mockMode'
-import { mockGetProfile, mockLogin, mockLogout } from '../mocks/mockBackend'
-import type { LoginRequest, LoginResponse, User } from '../types/auth'
+import { mockAdminExists, mockGetProfile, mockLogin, mockLogout, mockRegister } from '../mocks/mockBackend'
+import type { LoginRequest, LoginResponse, RegisterRequest, User } from '../types/auth'
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   if (USE_MOCK_DATA) {
@@ -28,4 +28,22 @@ export async function getProfile(): Promise<User> {
 
   const res = await get<User>('/auth/profile')
   return res.data
+}
+
+export async function register(payload: RegisterRequest): Promise<LoginResponse> {
+  if (USE_MOCK_DATA) {
+    return mockRegister(payload)
+  }
+
+  const res = await post<LoginResponse>('/auth/register', payload)
+  return res.data
+}
+
+export async function checkAdminExists(): Promise<boolean> {
+  if (USE_MOCK_DATA) {
+    return mockAdminExists()
+  }
+
+  const res = await get<{ exists: boolean }>('/auth/admin-exists')
+  return res.data.exists
 }

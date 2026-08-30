@@ -12,6 +12,7 @@ import AdminServices from './pages/AdminServices'
 import PetugasDashboard from './pages/PetugasDashboard'
 import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import TrackTicket from './pages/TrackTicket'
 import NotFound from './pages/NotFound'
 import { NetworkStatus } from './components/ui/NetworkStatus'
@@ -64,6 +65,7 @@ export default function App() {
         {/* Redirect beranda sesuai role */}
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
         <Route
           path="/kiosk"
           element={

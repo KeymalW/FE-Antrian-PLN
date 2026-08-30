@@ -551,6 +551,50 @@ export function mockLogin(username: string, password: string): LoginResponse {
   }
 }
 
+export function mockAdminExists(): boolean {
+  return mockState.accounts.some((entry) => entry.user.role === 'admin')
+}
+
+export function mockRegister(payload: {
+  name: string
+  username: string
+  password: string
+  password_confirmation: string
+}): LoginResponse {
+  if (mockAdminExists()) {
+    throw new Error('Admin sudah ada. Silakan login atau hubungi admin untuk membuat akun baru.')
+  }
+
+  const name = payload.name.trim()
+  const username = payload.username.trim().toLowerCase()
+  const password = payload.password
+
+  if (!name || !username || !password) throw new Error('Nama, username, dan password wajib diisi')
+  if (username.length < 3) throw new Error('Username minimal 3 karakter')
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) throw new Error('Username hanya boleh huruf, angka, dash, underscore')
+  if (password.length < 6) throw new Error('Password minimal 6 karakter')
+  if (password !== payload.password_confirmation) throw new Error('Konfirmasi password tidak cocok')
+  if (mockState.accounts.some((entry) => entry.user.username === username)) {
+    throw new Error('Username sudah digunakan')
+  }
+
+  const user: User = {
+    id: `user-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    username,
+    name,
+    role: 'admin',
+    counterNumber: null,
+  }
+  mockState.accounts.push({ user, password })
+  saveState()
+
+  const token = `mock-${user.id}-token`
+  localStorage.setItem('token', token)
+  localStorage.setItem('user', JSON.stringify(user))
+
+  return { user: { ...user }, token }
+}
+
 export function mockLogout(): void {
   localStorage.removeItem('token')
   localStorage.removeItem('user')

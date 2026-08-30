@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { User, Lock } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-import { login as loginApi } from '../services/auth'
+import { checkAdminExists, login as loginApi } from '../services/auth'
 import { getRoleHome } from '../lib/roles'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -21,8 +21,17 @@ export default function Login() {
   )
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [adminExists, setAdminExists] = useState<boolean | null>(null)
   const { login } = useAuthStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    let cancelled = false
+    checkAdminExists()
+      .then((exists) => { if (!cancelled) setAdminExists(exists) })
+      .catch(() => { if (!cancelled) setAdminExists(true) })
+    return () => { cancelled = true }
+  }, [])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -124,6 +133,15 @@ export default function Login() {
               {loading ? 'Memproses...' : 'Login'}
             </Button>
           </form>
+
+          {adminExists === false && (
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Belum ada admin?{' '}
+              <Link to="/register" className="font-medium text-primary hover:underline">
+                Daftar sebagai Admin
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
