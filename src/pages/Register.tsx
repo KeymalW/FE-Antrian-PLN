@@ -182,7 +182,7 @@ export default function Register() {
             </Link>
           </p>
           <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-            Maksimal 5 perusahaan untuk demo PKL. Tiap perusahaan terisolasi — admin perusahaan lain tidak bisa lihat antrianmu.
+            Daftar untuk membuat perusahaan baru di QServe.com
           </p>
         </div>
       </div>

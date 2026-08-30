@@ -141,7 +141,7 @@ export default function Login() {
               Daftar Perusahaan Baru
             </Button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Tiap perusahaan terisolasi — maksimal 5 perusahaan di QServe.com
+              Daftar untuk membuat perusahaan baru di QServe.com
             </p>
           </div>
         </div>
