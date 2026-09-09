@@ -14,6 +14,7 @@ import MonitorTV from './pages/MonitorTV'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import TrackTicket from './pages/TrackTicket'
+import AdminTenants from './pages/AdminTenants'
 import NotFound from './pages/NotFound'
 import { NetworkStatus } from './components/ui/NetworkStatus'
 import { PageTransition } from './components/layout/PageTransition'
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="services" element={<AdminServices />} />
           <Route path="accounts" element={<AdminAccounts />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="tenants" element={<AdminTenants />} />
         </Route>
 
         <Route

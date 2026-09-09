@@ -69,11 +69,46 @@ export function useWebSocket(handlers?: {
         }
         retryCountRef.current = 0
         startHeartbeat(socket)
+        // Register tenant for server-side isolation
+        try {
+          const raw = localStorage.getItem('user')
+          if (raw) {
+            const u = JSON.parse(raw) as { tenantId?: number; tenant_id?: number }
+            const tid = u.tenantId ?? u.tenant_id ?? null
+            if (tid != null) {
+              socket.send(JSON.stringify({ type: 'register', tenantId: tid }))
+            }
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       socket.onmessage = (event) => {
         try {
-          const msg: WebSocketMessage = JSON.parse(event.data)
+          const msg: WebSocketMessage & { tenantId?: number } = JSON.parse(event.data)
+          // Client-side tenant filter as fallback (server already filters, but keep for safety)
+          try {
+            const raw = localStorage.getItem('user')
+            if (raw && msg.tenantId != null) {
+              const u = JSON.parse(raw) as { tenantId?: number; tenant_id?: number }
+              const myTid = u.tenantId ?? u.tenant_id ?? null
+              if (myTid != null && msg.tenantId !== myTid) return
+            }
+            // Also check payload tenantId
+            const pTid = (msg.payload as Record<string, unknown> | undefined)?.tenantId ??
+                         (msg.payload as Record<string, unknown> | undefined)?.tenant_id
+            if (pTid != null) {
+              const raw2 = localStorage.getItem('user')
+              if (raw2) {
+                const u2 = JSON.parse(raw2) as { tenantId?: number; tenant_id?: number }
+                const myTid2 = u2.tenantId ?? u2.tenant_id ?? null
+                if (myTid2 != null && Number(pTid) !== Number(myTid2)) return
+              }
+            }
+          } catch {
+            /* ignore */
+          }
           const h = handlersRef.current
 
           switch (msg.type) {
@@ -84,6 +119,9 @@ export function useWebSocket(handlers?: {
             case 'queue_recall': h?.onQueueRecall?.(msg); break
             case 'services_update': h?.onServicesUpdate?.(msg); break
             case 'stats_update': h?.onStatsUpdate?.(msg); break
+            case 'registered':
+            case 'pong':
+              break
           }
         } catch {
           console.warn('Invalid WS message:', event.data)

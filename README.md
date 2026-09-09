@@ -1,14 +1,16 @@
-# FE Antrian PLN
+# FE Antrian PLN — QServe.com (Multi-tenant)
 
-Sistem antrian digital PLN — kiosk ambil tiket, tracking real-time, monitor TV, dashboard petugas & admin.
+Sistem antrian digital QServe.com — multi-tenant untuk 5 perusahaan, isolasi data per tenant, kiosk ambil tiket fisik, monitor TV, dashboard petugas & admin.
 
 ## Fitur
 
-- **Kiosk** — ambil tiket fisik, cetak otomatis, redirect ke halaman tiket
-- **Tiket** — tampilkan nomor & status antrian, cetak tiket fisik (tanpa QR)
-- **Monitor TV** — tampilan real-time per counter, status istirahat
-- **Petugas Dashboard** — panggil/skip/complete tiket, grafik mingguan, toggle istirahat
-- **Admin Dashboard** — overview multi-counter, full stats, riwayat global, export Excel
+- **Multi-tenant QServe.com** — daftar perusahaan di `/register` (Nama Perusahaan), isolasi `tenant_id` di semua data, max 5 tenant PKL, tiap tenant punya layanan/antrian/pengaturan/media terpisah
+- **Kiosk** — ambil tiket fisik per-tenant, cetak otomatis, layanan generik `Layanan 1/2/3 (A/B/C)` untuk tenant baru (PLN tetap `Pengaduan` dkk)
+- **Tiket** — tampilkan nomor & status antrian, cetak tiket fisik sinkron setting per-tenant (tanpa QR)
+- **Monitor TV** — tampilan real-time per counter per-tenant, status istirahat, video per-tenant
+- **Petugas Dashboard** — tab per layanan, panggil/skip/complete per-tenant, grafik mingguan
+- **Admin Dashboard** — overview per-tenant, laporan per-tenant, export CSV/Excel per-tenant, kelola layanan/akun per-tenant
+- **Debug PKL** — `GET /api/tenants` + halaman `/admin/tenants` untuk bukti isolasi (lokal, tidak di-push)
 
 ## Tech Stack
 
@@ -86,14 +88,16 @@ Aktifkan dengan `VITE_USE_MOCK_DATA=true` di `.env` — semua service (auth, que
 
 | Path              | Halaman                          |
 | ----------------- | -------------------------------- |
-| `/`               | Landing page (navigasi 3 card)   |
-| `/kiosk`          | Kiosk (ambil tiket fisik)        |
-| `/login`          | Login form                       |
-| `/track/:id`      | Tiket (cetak fisik)              |
-| `/monitor`        | Monitor TV                       |
-| `/petugas`        | Dashboard petugas                |
-| `/admin`          | Dashboard admin                  |
-| `/admin/settings` | Pengaturan admin                 |
+| `/`               | Redirect sesuai role             |
+| `/login`          | Login (tanpa pilih perusahaan)   |
+| `/register`       | Daftar Perusahaan + Admin (buat tenant baru) |
+| `/kiosk`          | Kiosk (ambil tiket fisik per-tenant) |
+| `/track/:id`      | Tiket (cetak fisik per-tenant)   |
+| `/monitor`        | Monitor TV per-tenant            |
+| `/petugas`        | Dashboard petugas per-tenant     |
+| `/admin`          | Dashboard admin per-tenant       |
+| `/admin/tenants`  | Debug PKL — daftar tenant (lokal) |
+| `/admin/settings` | Pengaturan per-tenant (Identitas Perusahaan, Media TV per-tenant, Kiosk) |
 | `*`               | 404 Not Found                    |
 
 ## Deployment

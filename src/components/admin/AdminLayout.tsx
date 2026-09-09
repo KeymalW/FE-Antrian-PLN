@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   BarChart3Icon,
+  Building2Icon,
   ClipboardListIcon,
   LayoutDashboardIcon,
   LogOutIcon,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: '/admin/services', label: 'Kelola Layanan', icon: ClipboardListIcon, end: false },
   { to: '/admin/accounts', label: 'Kelola Akun', icon: UsersIcon, end: false },
   { to: '/admin/settings', label: 'Pengaturan', icon: SettingsIcon, end: false },
+  { to: '/admin/tenants', label: 'Daftar Perusahaan', icon: Building2Icon, end: false },
 ] as const
 
 function getInitials(name: string | undefined) {
