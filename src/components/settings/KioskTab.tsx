@@ -146,7 +146,10 @@ export function KioskTab() {
           <CardTitle className="text-sm">Pratinjau</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center rounded-xl bg-pln-950 px-4 py-6 text-center">
+          <div
+            className="flex flex-col items-center rounded-xl px-4 py-6 text-center"
+            style={{ background: 'var(--tv-card-solid)' }}
+          >
             <img
               src={general?.logoUrl?.trim() || '/assets/logo-pln.png'}
               alt="Logo"

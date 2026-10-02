@@ -5,6 +5,7 @@ import type {
   GeneralSettings,
   KioskTextSettings,
   ServiceDefinition,
+  ThemeSettings,
   TicketTextSettings,
   UpdateAccountInput,
 } from '../types/admin'
@@ -437,6 +438,11 @@ function getInitialState() {
       hintText: 'Sentuh layar untuk mencetak tiket',
       footerText: 'PT PLN (Persero) · ULP Subang',
     } satisfies KioskTextSettings,
+    theme: {
+      presetId: 'pln-blue',
+      primary: '#1d4ed8',
+      accent: '#22d3ee',
+    } satisfies ThemeSettings,
     videoLinks: [] as Array<{ id: string; url: string; title: string }>,
     videoVolume: 0.2,
   }
@@ -479,6 +485,7 @@ function ensureShape<T extends ReturnType<typeof getInitialState>>(state: T): T 
   if (!state.generalSettings) state.generalSettings = initial.generalSettings
   if (!state.ticketText) state.ticketText = initial.ticketText
   if (!state.kioskText) state.kioskText = initial.kioskText
+  if (!state.theme) state.theme = initial.theme
   if (!Array.isArray(state.videoLinks)) state.videoLinks = []
   if (typeof state.videoVolume !== 'number') state.videoVolume = initial.videoVolume
   return state
@@ -991,6 +998,18 @@ export function mockUpdateKioskText(patch: Partial<KioskTextSettings>): KioskTex
   mockState.kioskText = { ...mockState.kioskText, ...patch }
   saveState()
   return { ...mockState.kioskText }
+}
+
+/* ============================ TEMA ========================== */
+
+export function mockGetTheme(): ThemeSettings {
+  return { ...(mockState.theme ?? { presetId: 'pln-blue', primary: '#1d4ed8', accent: '#22d3ee' }) }
+}
+
+export function mockUpdateTheme(patch: Partial<ThemeSettings>): ThemeSettings {
+  mockState.theme = { ...mockGetTheme(), ...patch }
+  saveState()
+  return { ...mockState.theme }
 }
 
 /* =========================== MEDIA TV ============================= */

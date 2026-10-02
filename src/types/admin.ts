@@ -68,3 +68,9 @@ export interface KioskTextSettings {
   hintText: string
   footerText: string
 }
+
+export interface ThemeSettings {
+  presetId: string
+  primary: string
+  accent: string
+}

@@ -77,6 +77,21 @@
   --chart-3: oklch(0.82 0.20 100);
   --chart-4: oklch(0.7 0.15 180);
   --chart-5: oklch(0.45 0.12 220);
+
+  /* Tema global — di-override JS via applyThemeToDocument (lib/theme.ts).
+     Default = biru tombol #1d4ed8 + aksen cyan, satu keluarga dengan halaman lain. */
+  --theme-primary: #1d4ed8;
+  --theme-primary-dark: #122e85;
+  --theme-primary-deep: #0d215f;
+  --theme-accent: #22d3ee;
+  --theme-primary-soft: rgba(29, 78, 216, 0.12);
+  --theme-accent-soft: rgba(34, 211, 238, 0.14);
+  --tv-header: #1d4ed8;
+  --tv-card: #0d215f;
+  --tv-card-solid: #0d215f;
+  --tv-overlay: rgba(13, 33, 95, 0.97);
+  --kiosk-bg: #1d4ed8;
+  --kiosk-glow: rgba(34, 211, 238, 0.3);
 }
 
 *,
@@ -323,8 +338,8 @@ dialog::backdrop {
 }
 
 /*
- * Admin/Petugas theme — biru halus sebagai aksen (tetap netral, tidak PLN-heavy).
- * Scope: hanya di dalam wrapper .admin-theme (AdminLayout & PetugasLayout).
+ * Admin/Petugas theme — kini mengikuti tema global yang bisa dikustomisasi
+ * dari Pengaturan › Tema. Scope: hanya di dalam wrapper .admin-theme.
  */
 .admin-theme {
   --radius: 0.7rem;
@@ -334,7 +349,7 @@ dialog::backdrop {
   --card-foreground: oklch(0.24 0.02 258);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 258);
-  --primary: oklch(0.53 0.19 262);
+  --primary: var(--theme-primary);
   --primary-foreground: oklch(0.985 0.005 255);
   --secondary: oklch(0.95 0.02 255);
   --secondary-foreground: oklch(0.32 0.08 262);
@@ -345,15 +360,44 @@ dialog::backdrop {
   --destructive: oklch(0.55 0.21 27);
   --border: oklch(0.91 0.02 255);
   --input: oklch(0.91 0.02 255);
-  --ring: oklch(0.53 0.19 262);
-  --chart-1: oklch(0.53 0.19 262);
+  --ring: var(--theme-primary);
+  --chart-1: var(--theme-primary);
   --chart-2: oklch(0.7 0.14 70);
   --chart-3: oklch(0.55 0.15 150);
   --chart-4: oklch(0.62 0.11 245);
   --chart-5: oklch(0.35 0.03 258);
-  /* Alias warna lama yang dipakai komponen bersama → kini sinkron ke biru aksen di area admin */
-  --color-pln-teal: oklch(0.53 0.19 262);
-  --color-pln-cyan: oklch(0.68 0.13 235);
+  /* Alias warna lama yang dipakai komponen bersama → kini sinkron ke tema global */
+  --color-pln-teal: var(--theme-primary);
+  --color-pln-cyan: var(--theme-accent);
+}
+
+/* Helper tema global — dipakai TV Display, Kiosk, dan preview di pengaturan. */
+.tv-header-bg {
+  background: var(--tv-header);
+}
+
+.tv-card-bg {
+  background: var(--tv-card);
+}
+
+.tv-card-solid-bg {
+  background: var(--tv-card-solid);
+}
+
+.tv-overlay-bg {
+  background: var(--tv-overlay);
+}
+
+.kiosk-bg {
+  background: var(--kiosk-bg);
+}
+
+.theme-primary-bg {
+  background: var(--theme-primary);
+}
+
+.theme-accent-text {
+  color: var(--theme-accent);
 }
 
 .admin-theme ::-webkit-scrollbar {

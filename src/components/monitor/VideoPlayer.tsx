@@ -32,10 +32,11 @@ export function VideoPlayer({ src, className = '', loop = true, onEnded, muted =
   if (!src || hasError) {
     return (
       <div
-        className={`flex items-center justify-center rounded-2xl bg-gradient-to-br from-pln-teal/30 via-gray-800/60 to-gray-800/60 ring-1 ring-pln-cyan/20 backdrop-blur ${className}`}
+        style={{ background: 'var(--tv-card-solid)' }}
+        className={`flex items-center justify-center rounded-2xl ring-1 ring-white/10 backdrop-blur ${className}`}
       >
-        <div className="flex flex-col items-center gap-4 text-pln-cyan/50">
-          <Film className="size-20" />
+        <div className="flex flex-col items-center gap-4" style={{ color: 'var(--theme-accent)' }}>
+          <Film className="size-20 opacity-60" />
           <span className="text-xl font-medium">Video Promosi</span>
           <span className="text-sm text-white/30">
             {hasError ? 'Video tidak dapat dimuat' : 'Belum ada video'}
@@ -47,7 +48,7 @@ export function VideoPlayer({ src, className = '', loop = true, onEnded, muted =
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl ring-1 ring-pln-cyan/20 shadow-[0_0_30px_rgba(20,162,186,0.15)] ${className}`}
+      className={`overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-[0_0_30px_rgba(0,0,0,0.25)] ${className}`}
     >
       <video
         ref={videoRef}

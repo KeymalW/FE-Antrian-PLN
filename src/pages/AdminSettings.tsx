@@ -19,6 +19,7 @@ import {
   MonitorPlayIcon,
   MonitorSmartphoneIcon,
   TicketIcon,
+  PaletteIcon,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { getServiceLabel } from '../lib/serviceTypes'
@@ -28,11 +29,13 @@ import { IdentityTab } from '../components/settings/IdentityTab'
 import { MediaTab } from '../components/settings/MediaTab'
 import { TicketTab } from '../components/settings/TicketTab'
 import { KioskTab } from '../components/settings/KioskTab'
+import { ThemeTab } from '../components/settings/ThemeTab'
 import type { QueueTicket } from '../types/queue'
 
 const TABS = [
   { key: 'general', label: 'Umum', icon: SettingsIcon },
   { key: 'identity', label: 'Identitas', icon: Building2Icon },
+  { key: 'theme', label: 'Tema', icon: PaletteIcon },
   { key: 'media', label: 'Media TV', icon: MonitorPlayIcon },
   { key: 'kiosk', label: 'Kiosk', icon: MonitorSmartphoneIcon },
   { key: 'ticket', label: 'Tiket', icon: TicketIcon },
@@ -327,6 +330,7 @@ export default function AdminSettings() {
       <div role="tabpanel">
         {activeTab === 'general' && <GeneralTab />}
         {activeTab === 'identity' && <IdentityTab />}
+        {activeTab === 'theme' && <ThemeTab />}
         {activeTab === 'media' && <MediaTab />}
         {activeTab === 'kiosk' && <KioskTab />}
         {activeTab === 'ticket' && <TicketTab />}

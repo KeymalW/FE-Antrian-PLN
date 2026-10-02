@@ -11,6 +11,7 @@ import { logout as logoutApi } from '../services/auth'
 import { getMonitorVideos, getServerVideoVolume, setLocalVideoVolume } from '../services/settings'
 import { VideoPlayer } from '../components/monitor/VideoPlayer'
 import { useSettingsStore } from '../store/settingsStore'
+import { useThemeStore } from '../store/themeStore'
 import { useServicesStore } from '../store/servicesStore'
 import { getServiceLabel } from '../lib/serviceTypes'
 import type { QueueTicket } from '../types/queue'
@@ -24,6 +25,7 @@ export default function MonitorTV() {
   const { logout } = useAuthStore()
   const navigate = useNavigate()
   const { general, fetchGeneral } = useSettingsStore()
+  const { fetchTheme } = useThemeStore()
   const { services, fetchServices } = useServicesStore()
   const { unlockAudio, announceQueueCall } = useQueueSound({
     ttsRate: 0.92,
@@ -80,7 +82,8 @@ export default function MonitorTV() {
   useEffect(() => {
     void fetchGeneral()
     void fetchServices()
-  }, [fetchGeneral, fetchServices])
+    void fetchTheme()
+  }, [fetchGeneral, fetchServices, fetchTheme])
 
   // Kartu TV: layanan aktif yang dipasangkan ke sebuah loket, urut nomor loket.
   const tvCards = useMemo(
@@ -239,13 +242,16 @@ export default function MonitorTV() {
       {/* Overlay: sentuh sekali untuk mengaktifkan audio pemanggilan */}
       {!audioUnlocked && (
         <div
-          className="fixed inset-0 z-40 flex cursor-pointer flex-col items-center justify-center gap-6 bg-[#030b24]/95 backdrop-blur-sm"
+          className="tv-overlay-bg fixed inset-0 z-40 flex cursor-pointer flex-col items-center justify-center gap-6 backdrop-blur-sm"
           onClick={() => {
             void unlockAudio()
             setAudioUnlocked(true)
           }}
         >
-          <div className="flex size-20 items-center justify-center rounded-full bg-white/10 text-pln-cyan">
+          <div
+            style={{ color: 'var(--theme-accent)' }}
+            className="flex size-20 items-center justify-center rounded-full bg-white/10"
+          >
             <VolumeXIcon className="size-10" />
           </div>
           <div className="text-center">
@@ -263,7 +269,7 @@ export default function MonitorTV() {
       )}
 
       {/* Header */}
-      <div className="group flex items-center justify-between border-b border-white/10 bg-[#001134] px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
+      <div className="tv-header-bg group flex items-center justify-between border-b border-white/10 px-8 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <img
             key={general?.logoUrl ?? 'default'}
@@ -288,8 +294,9 @@ export default function MonitorTV() {
         </div>
         <div className="flex items-center gap-3 opacity-0 transition-all duration-300 group-hover:opacity-100">
           <span
+            style={refreshing ? { background: 'var(--theme-accent)' } : undefined}
             className={`size-2 rounded-full transition-opacity duration-300 ${
-              refreshing ? 'opacity-100 bg-pln-cyan' : 'opacity-0'
+              refreshing ? 'opacity-100' : 'opacity-0'
             }`}
           />
           <button
@@ -311,7 +318,8 @@ export default function MonitorTV() {
                 setVideoVolume(v)
                 setLocalVideoVolume(v)
               }}
-              className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-pln-cyan"
+              className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20"
+              style={{ accentColor: 'var(--theme-accent)' }}
               title="Volume video"
             />
           )}
@@ -365,18 +373,19 @@ export default function MonitorTV() {
 
         {/* Active Call */}
         <div
-          className={`flex w-1/2 flex-col items-center justify-center rounded-2xl bg-[#001134] ring-1 backdrop-blur transition-all duration-500 ${
-            activeCallPulse ? 'ring-pln-cyan/50 animate-call-glow' : 'ring-pln-cyan/10'
+          className={`tv-card-bg flex w-1/2 flex-col items-center justify-center rounded-2xl ring-1 backdrop-blur transition-all duration-500 ${
+            activeCallPulse ? 'animate-call-glow ring-[var(--theme-accent)]/50' : 'ring-white/10'
           }`}
         >
           {activeCall ? (
             <>
-              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-pln-cyan/70">
+              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-white/70">
                 Nomor Panggilan
               </div>
               <div
                 key={callCount}
-                className={`text-8xl font-bold tracking-tight text-pln-cyan ${
+                style={{ color: 'var(--theme-accent)' }}
+                className={`text-8xl font-bold tracking-tight ${
                   activeCallPulse ? 'animate-call-pop' : ''
                 }`}
               >
@@ -387,14 +396,14 @@ export default function MonitorTV() {
               </div>
               {activeCall.counterNumber != null && (
                 <div className="mt-2 flex items-center gap-2 text-xl text-gray-400">
-                  <div className="size-3 rounded-full bg-pln-cyan" />
+                  <div className="size-3 rounded-full bg-[var(--theme-accent)]" />
                   {getServiceLabel(activeCall.serviceType)}
                 </div>
               )}
             </>
           ) : (
             <>
-              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-pln-cyan/70">
+              <div className="mb-2 text-lg font-semibold uppercase tracking-wider text-white/60">
                 Nomor Panggilan
               </div>
               <div className="text-8xl font-bold tracking-tight text-gray-600">
@@ -421,13 +430,13 @@ export default function MonitorTV() {
                 isPaused
                   ? 'bg-red-950/40 ring-red-500/30'
                   : isPulsing
-                    ? 'bg-[#001134] ring-pln-cyan/50 animate-pulse'
-                    : 'bg-[#001134] ring-pln-cyan/10'
+                    ? 'tv-card-bg animate-pulse ring-[var(--theme-accent)]/50'
+                    : 'tv-card-bg ring-white/10'
               }`}
             >
-              <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-pln-cyan/80">
+              <div className="mb-3 flex items-center gap-2 text-base font-bold uppercase tracking-wider text-white/80">
                 <div
-                  className={`size-2.5 rounded-full ${isPaused ? 'bg-red-500' : 'bg-pln-cyan'}`}
+                  className={`size-2.5 rounded-full ${isPaused ? 'bg-red-500' : 'bg-[var(--theme-accent)]'}`}
                 />
                 {getServiceLabel(service.code)}
               </div>
@@ -443,7 +452,10 @@ export default function MonitorTV() {
                 </div>
               ) : ticket ? (
                 <>
-                  <div className="text-5xl font-bold tracking-tight text-pln-cyan">
+                  <div
+                    style={{ color: 'var(--theme-accent)' }}
+                    className="text-5xl font-bold tracking-tight"
+                  >
                     {ticket.queueNumber}
                   </div>
                 </>
@@ -458,7 +470,7 @@ export default function MonitorTV() {
       </div>
 
       {/* Marquee */}
-      <div className="shrink-0 overflow-hidden border-t border-pln-cyan/10 bg-[#001134] px-6 py-3">
+      <div className="tv-header-bg shrink-0 overflow-hidden border-t border-white/10 px-6 py-3">
         <p className="animate-marquee whitespace-nowrap text-sm text-white">
           Terima kasih telah mengunjungi loket pelayanan PLN. Harap siapkan
           dokumen yang diperlukan sebelum nomor antrian Anda dipanggil.

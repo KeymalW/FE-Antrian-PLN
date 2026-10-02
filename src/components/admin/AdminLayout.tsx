@@ -52,8 +52,8 @@ function SidebarContent({ user, onLogout, onNavigate }: SidebarContentProps) {
 
   return (
     <>
-      {/* Garis aksen biru tipis di atas logo — biar sidebar tidak terasa polos */}
-      <div className="h-1 shrink-0 bg-blue-600" aria-hidden="true" />
+      {/* Garis aksen biru tipis di atas logo — ngikutin tema global */}
+      <div className="theme-primary-bg h-1 shrink-0" aria-hidden="true" />
       {/* Logo + nama instansi — diatur di Pengaturan › Identitas */}
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-5">
         <img
@@ -89,7 +89,7 @@ function SidebarContent({ user, onLogout, onNavigate }: SidebarContentProps) {
               cn(
                 'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                 isActive
-                  ? 'bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-100'
+                  ? 'bg-[var(--theme-primary-soft)] font-medium text-[var(--theme-primary-dark)] ring-1 ring-[var(--theme-accent-soft)]'
                   : 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'
               )
             }
@@ -99,7 +99,7 @@ function SidebarContent({ user, onLogout, onNavigate }: SidebarContentProps) {
                 <Icon
                   className={cn(
                     'size-4 shrink-0',
-                    isActive ? 'text-blue-600' : 'text-muted-foreground group-hover:text-foreground'
+                    isActive ? 'text-[var(--theme-primary)]' : 'text-muted-foreground group-hover:text-foreground'
                   )}
                   aria-hidden="true"
                 />

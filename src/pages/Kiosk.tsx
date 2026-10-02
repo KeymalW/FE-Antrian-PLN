@@ -6,6 +6,7 @@ import { logout as logoutApi } from '../services/auth'
 import { getKioskTextSettings } from '../services/settings'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useThemeStore } from '../store/themeStore'
 import { useServicesStore } from '../store/servicesStore'
 import { getKioskIconComponent } from '../lib/kioskIcons'
 import type { KioskTextSettings } from '../types/admin'
@@ -60,23 +61,31 @@ function ServiceCard({
       aria-label={`Ambil tiket ${svc.name}`}
     >
       <div
+        style={{ background: 'var(--theme-primary-soft)', borderColor: 'var(--theme-accent-soft)' }}
         className="mb-5 flex h-24 w-32 items-center justify-center rounded-2xl
-          bg-gradient-to-br from-pln-100 to-pln-50
-          ring-1 ring-pln-100 transition-transform duration-200 group-hover:scale-105"
+          ring-1 transition-transform duration-200 group-hover:scale-105"
       >
-        <Icon className="size-16 text-pln-700" aria-hidden="true" />
+        <Icon style={{ color: 'var(--theme-primary)' }} className="size-16" aria-hidden="true" />
       </div>
 
-      <div className="flex min-h-20 items-center justify-center text-balance text-center text-2xl font-bold leading-tight text-pln-700">
+      <div
+        style={{ color: 'var(--theme-primary-dark)' }}
+        className="flex min-h-20 items-center justify-center text-balance text-center text-2xl font-bold leading-tight"
+      >
         {svc.name}
       </div>
 
       <div className="mt-auto pt-6">
         <span
-          className="inline-flex items-center gap-2 rounded-full border border-pln-200
-            bg-pln-50 px-4 py-1.5 text-sm font-semibold text-pln-600"
+          style={{
+            borderColor: 'var(--theme-accent-soft)',
+            background: 'var(--theme-primary-soft)',
+            color: 'var(--theme-primary-dark)',
+          }}
+          className="inline-flex items-center gap-2 rounded-full border
+            px-4 py-1.5 text-sm font-semibold"
         >
-          <span className="size-1.5 rounded-full bg-pln-400" aria-hidden="true" />
+          <span style={{ background: 'var(--theme-accent)' }} className="size-1.5 rounded-full" aria-hidden="true" />
           Belum Ada Antrian
         </span>
       </div>
@@ -88,6 +97,7 @@ export default function Kiosk() {
   const navigate = useNavigate()
   const { logout } = useAuthStore()
   const { general, fetchGeneral } = useSettingsStore()
+  const { fetchTheme } = useThemeStore()
   const { services, fetchServices } = useServicesStore()
   const [kioskText, setKioskText] = useState<KioskTextSettings>(DEFAULT_KIOSK_TEXT)
   const [loading, setLoading] = useState(false)
@@ -98,7 +108,8 @@ export default function Kiosk() {
   useEffect(() => {
     void fetchGeneral()
     void fetchServices()
-  }, [fetchGeneral, fetchServices])
+    void fetchTheme()
+  }, [fetchGeneral, fetchServices, fetchTheme])
 
   // Kartu kiosk: layanan aktif yang ditandai "tampil di kiosk".
   const kioskServices = useMemo(
@@ -183,33 +194,10 @@ export default function Kiosk() {
   const dateLabel = `${WEEKDAYS[time.getDay()]}, ${time.getDate()} ${MONTHS[time.getMonth()]} ${time.getFullYear()}`
 
   return (
-    <div className="relative flex h-screen w-full select-none flex-col overflow-hidden bg-pln-900 font-sans text-white">
-      {/* ===== Background: blue gradient + subtle lighting ===== */}
+    <div className="relative flex h-screen w-full select-none flex-col overflow-hidden font-sans text-white">
+      {/* ===== Background: biru tema solid tanpa gradasi ===== */}
       <div
-        className="absolute inset-0"
-        aria-hidden="true"
-        style={{
-          background: 'linear-gradient(180deg, #0a2f8f 0%, #0a37a8 32%, #06153f 78%, #030b24 100%)',
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        aria-hidden="true"
-        style={{
-          background:
-            'radial-gradient(58% 42% at 50% -6%, rgba(64, 122, 255, 0.5), rgba(64, 122, 255, 0) 70%)',
-        }}
-      />
-      <div
-        className="absolute -left-32 bottom-[-10%] size-[38rem] rounded-full bg-pln-500/20 blur-[130px]"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute -right-40 bottom-[-18%] size-[42rem] rounded-full bg-pln-700/40 blur-[140px]"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute left-1/2 top-[26%] size-[26rem] -translate-x-1/2 rounded-full bg-pln-400/15 blur-[120px] animate-kiosk-glow"
+        className="kiosk-bg absolute inset-0"
         aria-hidden="true"
       />
 
@@ -237,10 +225,6 @@ export default function Kiosk() {
       {/* ===== Welcome header ===== */}
       <header className="pointer-events-none relative z-10 flex flex-col items-center px-8 pt-14 text-center">
         <div className="relative">
-          <div
-            className="absolute -inset-5 rounded-xl bg-pln-400/30 blur-2xl animate-kiosk-glow"
-            aria-hidden="true"
-          />
           <img
             src={general?.logoUrl?.trim() || '/assets/logo-pln.png'}
             alt="Logo instansi"
@@ -296,7 +280,8 @@ export default function Kiosk() {
 
         <button
           onClick={toggleFullscreen}
-          className="flex size-14 items-center justify-center rounded-full bg-white text-pln-600
+          style={{ color: 'var(--theme-primary)' }}
+          className="flex size-14 items-center justify-center rounded-full bg-white
             shadow-[0_10px_30px_-8px_rgba(3,11,36,0.7)]
             transition-all duration-200 hover:scale-105 hover:shadow-[0_14px_36px_-8px_rgba(3,11,36,0.85)]
             active:scale-95 z-20"
@@ -309,9 +294,9 @@ export default function Kiosk() {
 
       {/* ===== Loading overlay ===== */}
       {loading && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-pln-900/70 backdrop-blur-sm">
+        <div className="tv-overlay-bg absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 backdrop-blur-sm">
           <div className="flex size-20 items-center justify-center rounded-full bg-white/10">
-            <Spinner className="size-9 text-pln-300" />
+            <Spinner style={{ color: 'var(--theme-accent)' }} className="size-9" />
           </div>
           <p className="text-lg font-medium text-white/85">Mencetak tiket, harap tunggu...</p>
         </div>

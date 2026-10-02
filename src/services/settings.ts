@@ -1,7 +1,8 @@
 import api from './api'
 import { get, post, put, del } from './api'
 import { USE_MOCK_DATA } from '../mocks/mockMode'
-import type { GeneralSettings, KioskTextSettings, TicketTextSettings } from '../types/admin'
+import type { GeneralSettings, KioskTextSettings, ThemeSettings, TicketTextSettings } from '../types/admin'
+import { DEFAULT_THEME, readThemeFromStorage, saveThemeToStorage } from '../lib/theme'
 
 export interface VideoData {
   id?: string
@@ -235,4 +236,46 @@ export async function updateKioskTextSettings(
 
   const res = await post<KioskTextSettings>('/settings/kiosk-text', patch)
   return res.data
+}
+
+export async function getThemeSettings(): Promise<ThemeSettings> {
+  if (USE_MOCK_DATA) {
+    const { mockGetTheme } = await import('../mocks/mockBackend')
+    const theme = mockGetTheme()
+    saveThemeToStorage(theme)
+    return theme
+  }
+
+  try {
+    const res = await get<ThemeSettings>('/settings/theme')
+    const theme = res.data ?? DEFAULT_THEME
+    saveThemeToStorage(theme)
+    return theme
+  } catch {
+    // Backend belum ada / offline — pakai cache lokal agar TV tetap konsisten.
+    return readThemeFromStorage() ?? { ...DEFAULT_THEME }
+  }
+}
+
+export async function updateThemeSettings(
+  patch: Partial<ThemeSettings>,
+): Promise<ThemeSettings> {
+  if (USE_MOCK_DATA) {
+    const { mockUpdateTheme } = await import('../mocks/mockBackend')
+    const theme = mockUpdateTheme(patch)
+    saveThemeToStorage(theme)
+    return theme
+  }
+
+  try {
+    const res = await put<ThemeSettings>('/settings/theme', patch)
+    saveThemeToStorage(res.data)
+    return res.data
+  } catch {
+    // Backend belum ready — simpan lokal dulu agar UX tidak rusak.
+    const current = readThemeFromStorage() ?? { ...DEFAULT_THEME }
+    const merged: ThemeSettings = { ...current, ...patch }
+    saveThemeToStorage(merged)
+    return merged
+  }
 }

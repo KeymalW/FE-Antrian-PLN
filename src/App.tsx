@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -19,6 +20,7 @@ import NotFound from './pages/NotFound'
 import { NetworkStatus } from './components/ui/NetworkStatus'
 import { PageTransition } from './components/layout/PageTransition'
 import { useAuthStore } from './store/authStore'
+import { useThemeStore } from './store/themeStore'
 import { getRoleHome } from './lib/roles'
 
 function HomeRedirect() {
@@ -32,6 +34,11 @@ function HomeRedirect() {
 }
 
 export default function App() {
+  const fetchTheme = useThemeStore((s) => s.fetchTheme)
+
+  useEffect(() => {
+    void fetchTheme()
+  }, [fetchTheme])
   return (
     <Router>
       <NetworkStatus />
